@@ -5,10 +5,13 @@ namespace ProFighter.Domain.Entities;
 
 public class Trainer : BaseEntity
 {
+    private readonly List<Media> _medias = new();
+
     public string Name { get; private set; }
     public string? Bio { get; private set; }
     public SubscriptionType Specialization { get; private set; }
     public bool IsActive { get; private set; }
+    public IReadOnlyCollection<Media> Medias => _medias.AsReadOnly();
 
     // EF Core Constructor
     private Trainer() : base()

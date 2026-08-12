@@ -26,5 +26,11 @@ public class TrainerConfiguration : IEntityTypeConfiguration<Trainer>
 
         builder.Property(t => t.IsActive)
             .IsRequired();
+
+        // Polymorphic relationship to Media (No database-level FK constraint enforced)
+        builder.HasMany(t => t.Medias)
+            .WithOne()
+            .HasForeignKey(m => m.OwnerId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

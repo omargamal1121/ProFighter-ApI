@@ -27,5 +27,11 @@ public class GymConfiguration : IEntityTypeConfiguration<Gym>
 
         builder.Property(g => g.Email)
             .HasMaxLength(150);
+
+        // Polymorphic relationship to Media (No database-level FK constraint enforced)
+        builder.HasMany(g => g.Medias)
+            .WithOne()
+            .HasForeignKey(m => m.OwnerId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

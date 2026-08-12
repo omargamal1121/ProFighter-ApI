@@ -4,9 +4,12 @@ namespace ProFighter.Domain.Entities;
 
 public class Product : BaseEntity
 {
+    private readonly List<Media> _medias = new();
+
     public string Name { get; private set; }
     public decimal Price { get; private set; }
     public int StockQuantity { get; private set; }
+    public IReadOnlyCollection<Media> Medias => _medias.AsReadOnly();
 
     // EF Core Constructor
     private Product() : base()
