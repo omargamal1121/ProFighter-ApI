@@ -1,0 +1,121 @@
+## .NET / Visual Studio / Rider - ProFighter Solution
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+
+# Rider / JetBrains
+.idea/
+*.sln.iml
+
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# MSBuild / Roslyn
+*.tlog
+*.lastbuildstate
+*.pidb
+*.svclog
+*.scc
+.vshistory/
+
+# Test results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.trx
+*.coverage
+*.coveragexml
+coverage/
+
+# Publish
+[Pp]ublish/
+publish/
+**/[Pp]ublish/**
+*.publish.xml
+*.pubxml
+*.pubxml.user
+*.publishproj
+PublishProfiles/
+FolderProfile.pubxml
+FolderProfile.pubxml.user
+
+# ASP.NET Core
+appsettings.Development.json
+appsettings.Local.json
+appsettings.*.local.json
+appsettings.json
+appsettings.*.json
+launchSettings.json
+
+# Secrets & credentials (CRITICAL - Firebase, Rekaz, DB, JWT keys)
+*.env
+.env
+.env.*
+secrets.json
+**/secrets/*.json
+firebase-adminsdk-*.json
+firebase-service-account*.json
+**/Infrastructure/Firebase/Credentials/*.json
+appsettings.Production.json
+
+# EF Core
+*.edmx.diagram
+Migrations/*.Designer.cs.orig
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# Hangfire
+hangfire.sqlite
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# Others
+*.log
+*.tmp
+*.bak
+*.swp
+node_modules/
