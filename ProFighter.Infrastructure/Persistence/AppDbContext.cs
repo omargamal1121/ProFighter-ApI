@@ -3,20 +3,20 @@ using Microsoft.EntityFrameworkCore;
 using ProFighter.Domain.Common;
 using ProFighter.Domain.Entities;
 using ProFighter.Infrastructure.Identity;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using ProFighter.Application.Common.Interfaces;
 
 namespace ProFighter.Infrastructure.Persistence;
 
-public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>
+public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>, IApplicationDbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
     }
 
     public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<CustomerSyncFailure> CustomerSyncFailures => Set<CustomerSyncFailure>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
+
     public DbSet<Reservation> Reservations => Set<Reservation>();
     public DbSet<LoyaltyTransaction> LoyaltyTransactions => Set<LoyaltyTransaction>();
     public DbSet<Product> Products => Set<Product>();
@@ -31,10 +31,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // Must call base.OnModelCreating first when inheriting IdentityDbContext
+       
         base.OnModelCreating(modelBuilder);
         
-        // Apply configurations from assembly
+        
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
     }
 
@@ -61,7 +61,6 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
                     break;
 
                 case EntityState.Deleted:
-                    // Change state to Modified to prevent hard delete
                     entry.State = EntityState.Modified;
                     entry.Entity.MarkAsDeleted();
                     break;

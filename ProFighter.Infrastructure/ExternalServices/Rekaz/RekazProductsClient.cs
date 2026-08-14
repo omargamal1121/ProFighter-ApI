@@ -48,8 +48,7 @@ public sealed class RekazProductsClient : IRekazProductsClient
         using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
 
         // Authorization: Basic <value used as-is — not re-encoded>
-        request.Headers.TryAddWithoutValidation("Authorization", _options.ApiKeyBase64);
-        request.Headers.TryAddWithoutValidation("__tenant", _options.TenantId);
+     
         request.Headers.TryAddWithoutValidation("Accept", "application/json");
 
         using var response = await _httpClient.SendAsync(request, ct);

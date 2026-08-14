@@ -1,4 +1,5 @@
 using ProFighter.Infrastructure;
+using ProFighter.Application;
 
 namespace ProFighter.API
 {
@@ -15,6 +16,7 @@ namespace ProFighter.API
 			builder.Services.AddEndpointsApiExplorer();
 			builder.Services.AddSwaggerGen();
 
+			builder.Services.AddApplication();
 			builder.Services.AddInfrastructure(builder.Configuration);
 
 			var app = builder.Build();
