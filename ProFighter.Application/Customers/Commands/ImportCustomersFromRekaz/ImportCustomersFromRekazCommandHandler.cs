@@ -1,28 +1,32 @@
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ProFighter.Application.Common.Interfaces;
 using ProFighter.Application.Common.Models;
-using ProFighter.Domain.Enums;
 
 namespace ProFighter.Application.Customers.Commands.ImportCustomersFromRekaz;
 
+// Orchestrates: External API pagination loop, existence check, and local provisioning in batches.
 public class ImportCustomersFromRekazCommandHandler : IRequestHandler<ImportCustomersFromRekazCommand, ImportCustomersResult>
 {
     private readonly IRekazCustomersClient _rekazCustomersClient;
-    private readonly IApplicationDbContext _context;
     private readonly ICustomerProvisioningService _provisioningService;
+    private readonly IApplicationDbContext _context;
     private readonly ILogger<ImportCustomersFromRekazCommandHandler> _logger;
 
     public ImportCustomersFromRekazCommandHandler(
         IRekazCustomersClient rekazCustomersClient,
-        IApplicationDbContext context,
         ICustomerProvisioningService provisioningService,
+        IApplicationDbContext context,
         ILogger<ImportCustomersFromRekazCommandHandler> logger)
     {
         _rekazCustomersClient = rekazCustomersClient;
-        _context = context;
         _provisioningService = provisioningService;
+        _context = context;
         _logger = logger;
     }
 
@@ -36,7 +40,7 @@ public class ImportCustomersFromRekazCommandHandler : IRequestHandler<ImportCust
         int failed = 0;
         var errors = new List<string>();
 
-        const int safetyLimit = 200; // 200 iterations * 100 = 20,000 customers safety cap
+        const int safetyLimit = 200;
         int iterations = 0;
         bool hasMore = true;
 
@@ -51,12 +55,10 @@ public class ImportCustomersFromRekazCommandHandler : IRequestHandler<ImportCust
 
             try
             {
-                var query = new RekazCustomersQuery(
-                    SkipCount: skipCount,
-                    MaxResultCount: maxResultCount
-                );
-
+                // 1. Fetch page from external API
+                var query = new RekazCustomersQuery(SkipCount: skipCount, MaxResultCount: maxResultCount);
                 var response = await _rekazCustomersClient.GetCustomersAsync(query, cancellationToken);
+                
                 if (response == null || response.Items == null || response.Items.Count == 0)
                 {
                     break;
@@ -64,6 +66,7 @@ public class ImportCustomersFromRekazCommandHandler : IRequestHandler<ImportCust
 
                 totalFetched += response.Items.Count;
 
+                // 2. Process each customer
                 foreach (var customerDto in response.Items)
                 {
                     try
@@ -75,12 +78,12 @@ public class ImportCustomersFromRekazCommandHandler : IRequestHandler<ImportCust
                             continue;
                         }
 
-                        await _provisioningService.ProvisionLocalCustomerAsync(
+                        // Provision locally (adds to DbContext tracked entities)
+                        await _provisioningService.ProvisionFromRekazAsync(
                             customerDto.Id,
                             customerDto.Name,
                             customerDto.MobileNumber,
                             customerDto.Email,
-                            CustomerSource.LegacyRekazImport,
                             cancellationToken
                         );
 
@@ -94,6 +97,12 @@ public class ImportCustomersFromRekazCommandHandler : IRequestHandler<ImportCust
                     }
                 }
 
+                // 3. Persist the batch of successfully provisioned customers
+                if (imported > 0)
+                {
+                    await _context.SaveChangesAsync(cancellationToken);
+                }
+
                 skipCount += maxResultCount;
                 hasMore = response.Items.Count == maxResultCount && skipCount < response.TotalCount;
             }
@@ -102,22 +111,6 @@ public class ImportCustomersFromRekazCommandHandler : IRequestHandler<ImportCust
                 _logger.LogError(ex, "Failed to fetch page of customers from Rekaz at SkipCount {SkipCount}", skipCount);
                 errors.Add($"Failed to fetch batch from Rekaz: {ex.Message}");
                 break; // Stop paginating if the external service fails completely
-            }
-        }
-
-        if (imported > 0)
-        {
-            try
-            {
-                await _context.SaveChangesAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogCritical(ex, "Fatal error saving imported customer entities to the database.");
-                errors.Add($"Critical DB Save failure: {ex.Message}");
-                // Adjust counts since the commit failed
-                failed += imported;
-                imported = 0;
             }
         }
 

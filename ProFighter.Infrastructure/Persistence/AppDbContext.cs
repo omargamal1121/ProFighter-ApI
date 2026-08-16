@@ -15,6 +15,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, 
 
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<CustomerSyncFailure> CustomerSyncFailures => Set<CustomerSyncFailure>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
 
     public DbSet<Reservation> Reservations => Set<Reservation>();

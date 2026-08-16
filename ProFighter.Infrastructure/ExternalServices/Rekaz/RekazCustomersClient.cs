@@ -18,11 +18,7 @@ public sealed class RekazCustomersClient : IRekazCustomersClient
 {
     private const string CustomersEndpoint = "/api/public/customers";
 
-    /// <summary>
-    /// The only customer type value allowed by the Rekaz public API.
-    /// Not exposed to callers — hardcoded here per API docs.
-    /// </summary>
-    private const int FixedCustomerType = 12;
+    private const int FixedCustomerType = 1;
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -52,7 +48,7 @@ public sealed class RekazCustomersClient : IRekazCustomersClient
 
         _logger.LogInformation("Rekaz CreateCustomer → POST {Endpoint}", CustomersEndpoint);
 
-        // Build the body — "type" is always 12, callers cannot override it.
+    
         var body = new
         {
             name         = request.Name,

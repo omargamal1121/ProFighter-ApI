@@ -94,4 +94,20 @@ public class Subscription : BaseEntity
         PaymentLink = paymentLink;
         MarkAsUpdated();
     }
+
+    public void SyncFromRekaz(SubscriptionStatus status, DateTime startDate, DateTime? endDate, decimal price)
+    {
+        Status = status;
+        StartDate = startDate;
+        EndDate = endDate;
+        Price = price;
+        MarkAsUpdated();
+    }
+
+    public void SetRekazInvoice(Guid invoiceId, string paymentLink)
+    {
+        RekazInvoiceId = invoiceId;
+        PaymentLink = paymentLink;
+        MarkAsUpdated();
+    }
 }

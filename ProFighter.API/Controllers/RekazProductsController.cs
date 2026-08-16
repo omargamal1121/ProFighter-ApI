@@ -1,33 +1,24 @@
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using ProFighter.Application.Common;
-using ProFighter.Application.Common.Interfaces;
 using ProFighter.Application.Common.Models;
+using ProFighter.Application.Products.Queries.GetProductFilters;
+using ProFighter.Application.Products.Queries.GetRekazProducts;
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace ProFighter.API.Controllers;
 
 [Route("api/rekaz/products")]
 public class RekazProductsController : BaseController
 {
-    private readonly IRekazProductsClient _rekazProducts;
+    private readonly IMediator _mediator;
 
-    // ProFighter sport categories used to filter the products listing.
-    // Key → sent as the Keyword query param to Rekaz.
-    // Name → Arabic display label shown in the UI.
-    private static readonly IReadOnlyList<ProductCategoryDto> _categories =
-    [
-        new("boxing",    "بوكس"),
-        new("kickboxing","كيك بوكس"),
-        new("muay-thai", "ماي تاي"),
-        new("mma",       "MMA"),
-        new("jiu-jitsu", "جوجيتسو"),
-        new("karate",    "كراتيه"),
-        new("swimming",  "سباحة"),
-        new("bootcamp",  "بود كامب"),
-    ];
-
-    public RekazProductsController(IRekazProductsClient rekazProducts)
+    public RekazProductsController(IMediator mediator)
     {
-        _rekazProducts = rekazProducts;
+        _mediator = mediator;
     }
 
     /// <summary>
@@ -46,7 +37,7 @@ public class RekazProductsController : BaseController
         [FromQuery] string? sorting = null,
         CancellationToken ct = default)
     {
-        var query = new RekazProductsQuery(
+        var query = new GetRekazProductsQuery(
             SkipCount: skipCount,
             MaxResultCount: maxResultCount,
             Keyword: keyword,
@@ -55,7 +46,7 @@ public class RekazProductsController : BaseController
             Sorting: sorting
         );
 
-        var data = await _rekazProducts.GetProductsAsync(query, ct);
+        var data = await _mediator.Send(query, ct);
         return HandleResult(Result<RekazProductsResult>.Success(data, "Products fetched successfully."));
     }
 
@@ -65,6 +56,9 @@ public class RekazProductsController : BaseController
     /// </summary>
     [HttpGet("filters")]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<ProductCategoryDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<IReadOnlyList<ProductCategoryDto>>> GetFilters() =>
-        HandleResult(Result<IReadOnlyList<ProductCategoryDto>>.Success(_categories, "Filters fetched successfully."));
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<ProductCategoryDto>>>> GetFilters(CancellationToken ct = default)
+    {
+        var data = await _mediator.Send(new GetProductFiltersQuery(), ct);
+        return HandleResult(Result<IReadOnlyList<ProductCategoryDto>>.Success(data, "Filters fetched successfully."));
+    }
 }

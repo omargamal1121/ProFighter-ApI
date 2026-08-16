@@ -1,4 +1,5 @@
 using FluentValidation;
+using ProFighter.Application.Common.Constants;
 
 namespace ProFighter.Application.Customers.Commands.CreateCustomerByAdmin;
 
@@ -12,7 +13,7 @@ public class CreateCustomerByAdminCommandValidator : AbstractValidator<CreateCus
 
         RuleFor(v => v.MobileNumber)
             .NotEmpty().WithMessage("Mobile number is required.")
-            .MaximumLength(20).WithMessage("Mobile number must not exceed 20 characters.");
+            .Matches(ValidationPatterns.SaudiMobileNumberPattern).WithMessage("Mobile number must be in the format 966XXXXXXXXX (12 digits, starting with 966, no + or spaces).");
 
         RuleFor(v => v.Email)
             .EmailAddress().WithMessage("A valid email address is required.")

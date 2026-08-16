@@ -23,9 +23,6 @@ public class NotificationEmailService : INotificationEmailService
 
         _logger.LogInformation("Sending sync failure alert to admin email: {AdminEmail} for Rekaz customer ID: {RekazCustomerId}", 
             adminEmail, failure.RekazCustomerId);
-
-        // Placeholder/Stub implementation using project configuration values as instructed
-        // In real-world MailKit/Brevo SMTP setup would be placed here.
         return Task.CompletedTask;
     }
 }

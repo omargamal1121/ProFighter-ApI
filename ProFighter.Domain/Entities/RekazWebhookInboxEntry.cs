@@ -36,4 +36,10 @@ public class RekazWebhookInboxEntry
         Processed = true;
         ProcessedAt = DateTime.UtcNow;
     }
+
+    public void MarkProcessed()
+    {
+        Processed = true;
+        ProcessedAt = DateTime.UtcNow;
+    }
 }

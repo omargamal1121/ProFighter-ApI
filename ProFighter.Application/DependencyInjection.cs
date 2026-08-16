@@ -13,6 +13,8 @@ public static class DependencyInjection
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(assembly));
         services.AddValidatorsFromAssembly(assembly);
 
+        services.AddScoped<ProFighter.Application.Customers.Services.Query.ICustomerQueryService, ProFighter.Application.Customers.Services.Query.CustomerQueryService>();
+
         return services;
     }
 }
