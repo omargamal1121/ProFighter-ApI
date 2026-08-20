@@ -43,7 +43,7 @@ public class CreateSubscriptionCommandHandler : IRequestHandler<CreateSubscripti
             .OrderByDescending(s => s.EndDate)
             .FirstOrDefaultAsync(ct);
 
-        if (existing is not null && existing.Status == SubscriptionStatus.Pending)
+        if (existing is not null && existing.Status == "Pending")
         {
             // Don't create a duplicate pending invoice — return the existing unpaid one.
             return new CreateSubscriptionResult(
@@ -55,7 +55,7 @@ public class CreateSubscriptionCommandHandler : IRequestHandler<CreateSubscripti
 
         DateTime startAt;
         var isRenewal = false;
-        if (existing is not null && existing.Status == SubscriptionStatus.Active
+        if (existing is not null && existing.Status == "Active"
             && existing.EndDate.HasValue && existing.EndDate.Value > DateTime.UtcNow)
         {
             // Queue the new subscription to start exactly when the current one ends —

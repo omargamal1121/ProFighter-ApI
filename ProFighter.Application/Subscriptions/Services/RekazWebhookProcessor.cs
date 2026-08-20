@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ProFighter.Application.Common.Interfaces;
 using ProFighter.Application.Common.Models;
-using ProFighter.Application.Subscriptions.Common;
 using ProFighter.Domain.Entities;
 using ProFighter.Domain.Enums;
 using System.Text.Json;
@@ -68,8 +67,8 @@ public class RekazWebhookProcessor : IRekazWebhookProcessor
         var fetched = await _subscriptionsClient.GetSubscriptionByIdAsync(rekazSubscriptionId, ct);
         if (fetched is null)
         {
-            _logger.LogWarning("Subscription {RekazSubscriptionId} not found on re-fetch — skipping sync.", rekazSubscriptionId);
-            return;
+            _logger.LogWarning("Subscription {RekazSubscriptionId} not found on re-fetch — allowing Hangfire retry", rekazSubscriptionId);
+            throw new InvalidOperationException($"Subscription {rekazSubscriptionId} not found in Rekaz - allowing retry mechanism to handle");
         }
 
         await _unitOfWork.ExecuteInTransactionAsync(async innerCt =>
@@ -92,12 +91,13 @@ public class RekazWebhookProcessor : IRekazWebhookProcessor
                 customer = await _context.Customers.FirstAsync(c => c.Id == newCustomerId, innerCt);
             }
 
-            var localStatus = RekazSubscriptionStatusMapper.Map(fetched.Status);
             var existingSubscription = await _context.Subscriptions
                 .FirstOrDefaultAsync(s => s.RekazSubscriptionId == rekazSubscriptionId, innerCt);
 
             if (existingSubscription is null)
             {
+                // Webhook references a subscription that doesn't exist locally - create it
+                // This handles the case where webhook references a subscription not present during initial sync
                 // TODO: mapping a Rekaz priceId to our local SubscriptionType (MartialArts/Swimming)
                 // requires a priceId → SubscriptionType lookup not yet built. Defaulting to
                 // MartialArts and flagging for review — do NOT block the sync on this, since
@@ -110,11 +110,17 @@ public class RekazWebhookProcessor : IRekazWebhookProcessor
                     type: SubscriptionType.MartialArts, // TODO: real priceId→Type mapping
                     startDate: fetched.StartAt,
                     price: fetched.TotalAmount);
+                newSubscription.SyncFromRekaz(fetched.Status, fetched.StartAt, fetched.EndAt, fetched.TotalAmount);
                 _context.Subscriptions.Add(newSubscription);
+                _logger.LogInformation("Created local subscription {LocalId} for Rekaz subscription {RekazId} via webhook", 
+                    newSubscription.Id, rekazSubscriptionId);
             }
             else
             {
-                existingSubscription.SyncFromRekaz(localStatus, fetched.StartAt, fetched.EndAt, fetched.TotalAmount);
+                // Update existing subscription with latest Rekaz data
+                existingSubscription.SyncFromRekaz(fetched.Status, fetched.StartAt, fetched.EndAt, fetched.TotalAmount);
+                _logger.LogInformation("Updated local subscription {LocalId} for Rekaz subscription {RekazId} via webhook", 
+                    existingSubscription.Id, rekazSubscriptionId);
             }
 
             await _context.SaveChangesAsync(innerCt);

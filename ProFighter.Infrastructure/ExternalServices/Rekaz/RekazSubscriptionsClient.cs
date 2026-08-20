@@ -6,6 +6,7 @@ using ProFighter.Infrastructure.ExternalServices.Rekaz.Dtos;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace ProFighter.Infrastructure.ExternalServices.Rekaz;
 
@@ -18,7 +19,11 @@ public sealed class RekazSubscriptionsClient : IRekazSubscriptionsClient
     private const string SubscriptionsEndpoint = "/api/public/subscriptions";
     private const int FixedCustomerType = 12;
 
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Skip,
+        Converters = { new RekazDiscountTypeConverter() }
+    };
 
     private readonly HttpClient _httpClient;
     private readonly ILogger<RekazSubscriptionsClient> _logger;
@@ -194,8 +199,8 @@ public sealed class RekazSubscriptionsClient : IRekazSubscriptionsClient
 
         if (q.Statuses != null && q.Statuses.Count > 0)
         {
-            // Verified standard ASP.NET model binding array query representation
-            parts.AddRange(q.Statuses.Select(s => $"Statuses={s}"));
+            // Statuses are now strings (e.g., "Pending", "Active")
+            parts.AddRange(q.Statuses.Select(s => $"Statuses={Uri.EscapeDataString(s)}"));
         }
 
         if (!string.IsNullOrWhiteSpace(q.CustomerMobile))

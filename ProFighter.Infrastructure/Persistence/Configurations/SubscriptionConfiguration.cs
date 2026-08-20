@@ -21,7 +21,6 @@ public class SubscriptionConfiguration : IEntityTypeConfiguration<Subscription>
             .IsRequired();
 
         builder.Property(s => s.Status)
-            .HasConversion<string>()
             .HasMaxLength(50)
             .IsRequired();
 

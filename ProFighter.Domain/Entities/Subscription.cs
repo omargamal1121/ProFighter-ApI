@@ -10,7 +10,7 @@ public class Subscription : BaseEntity
     public Guid? RekazInvoiceId { get; private set; }
     public string? PaymentLink { get; private set; }
     public SubscriptionType Type { get; private set; }
-    public SubscriptionStatus Status { get; private set; }
+    public string Status { get; private set; }
     public DateTime StartDate { get; private set; }
     public DateTime? EndDate { get; private set; }
     public decimal Price { get; private set; }
@@ -35,7 +35,7 @@ public class Subscription : BaseEntity
         CustomerId = customerId;
         RekazSubscriptionId = rekazSubscriptionId;
         Type = type;
-        Status = SubscriptionStatus.Pending;
+        Status = "Pending";
         StartDate = startDate;
         Price = price;
         RekazInvoiceId = rekazInvoiceId;
@@ -45,7 +45,7 @@ public class Subscription : BaseEntity
 
     public void Activate(DateTime? endDate = null)
     {
-        Status = SubscriptionStatus.Active;
+        Status = "Active";
         if (endDate.HasValue)
         {
             EndDate = endDate.Value;
@@ -55,36 +55,36 @@ public class Subscription : BaseEntity
 
     public void Pause()
     {
-        if (Status != SubscriptionStatus.Active)
+        if (Status != "Active")
             throw new InvalidOperationException("Only active subscriptions can be paused.");
-        Status = SubscriptionStatus.Paused;
+        Status = "Paused";
         MarkAsUpdated();
     }
 
     public void Resume()
     {
-        if (Status != SubscriptionStatus.Paused)
+        if (Status != "Paused")
             throw new InvalidOperationException("Only paused subscriptions can be resumed.");
-        Status = SubscriptionStatus.Active;
+        Status = "Active";
         MarkAsUpdated();
     }
 
     public void Expire()
     {
-        Status = SubscriptionStatus.Expired;
+        Status = "Expired";
         MarkAsUpdated();
     }
 
     public void Cancel()
     {
-        Status = SubscriptionStatus.Cancelled;
+        Status = "Cancelled";
         MarkAsUpdated();
     }
 
     public void TransferToCustomer(Guid newCustomerId)
     {
         CustomerId = newCustomerId;
-        Status = SubscriptionStatus.Transferred;
+        Status = "Transferred";
         MarkAsUpdated();
     }
 
@@ -95,7 +95,7 @@ public class Subscription : BaseEntity
         MarkAsUpdated();
     }
 
-    public void SyncFromRekaz(SubscriptionStatus status, DateTime startDate, DateTime? endDate, decimal price)
+    public void SyncFromRekaz(string status, DateTime startDate, DateTime? endDate, decimal price)
     {
         Status = status;
         StartDate = startDate;

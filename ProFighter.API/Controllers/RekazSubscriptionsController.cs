@@ -36,7 +36,7 @@ public class RekazSubscriptionsController : BaseController
         [FromQuery] DateTime? startAtMax = null,
         [FromQuery] DateTime? nextBillingAtMin = null,
         [FromQuery] DateTime? nextBillingAtMax = null,
-        [FromQuery] List<int>? statuses = null,
+        [FromQuery] List<string>? statuses = null,
         [FromQuery] string? customerMobile = null,
         [FromQuery] string? keyword = null,
         [FromQuery] List<Guid>? priceIds = null,

@@ -12,7 +12,7 @@ public record GetRekazSubscriptionsQuery(
     DateTime? StartAtMax = null,
     DateTime? NextBillingAtMin = null,
     DateTime? NextBillingAtMax = null,
-    List<int>? Statuses = null,
+    List<string>? Statuses = null,
     string? CustomerMobile = null,
     string? Keyword = null,
     List<Guid>? PriceIds = null,

@@ -19,24 +19,31 @@ public class UnitOfWork : IUnitOfWork
         Func<CancellationToken, Task<TResult>> operation,
         CancellationToken ct = default)
     {
-        if (_context.Database.CurrentTransaction is not null)
-        {
-            return await ExecuteWithExceptionTranslation(operation, ct);
-        }
+        var strategy = _context.Database.CreateExecutionStrategy();
 
-        await using var transaction = await _context.Database.BeginTransactionAsync(ct);
-        try
+        return await strategy.ExecuteAsync(async () =>
         {
-            var result = await ExecuteWithExceptionTranslation(operation, ct);
-            await transaction.CommitAsync(ct);
-            return result;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Transaction failed, rolling back.");
-            await transaction.RollbackAsync(ct);
-            throw;
-        }
+            // Check if there's already a transaction (nested transaction support)
+            if (_context.Database.CurrentTransaction is not null)
+            {
+                return await ExecuteWithExceptionTranslation(operation, ct);
+            }
+
+            await using var transaction = await _context.Database.BeginTransactionAsync(ct);
+            try
+            {
+                var result = await ExecuteWithExceptionTranslation(operation, ct);
+                await _context.SaveChangesAsync(ct);
+                await transaction.CommitAsync(ct);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Transaction failed, rolling back.");
+                await transaction.RollbackAsync(ct);
+                throw;
+            }
+        });
     }
 
     private async Task<TResult> ExecuteWithExceptionTranslation<TResult>(
