@@ -73,6 +73,8 @@ public record RekazPriceSummary(
     string? Name,
     decimal Amount,
     decimal? DiscountedAmount,
+    DateTime? DiscountValidFrom,
+    DateTime? DiscountValidUntil,
     /// <summary>
     /// True when the underlying Rekaz PriceType is 2 (Recurring).
     /// The raw integer type value is intentionally not exposed.

@@ -63,12 +63,14 @@ public static class DependencyInjection
         .AddDefaultTokenProviders();
 
 		// Hangfire with MySQL storage
+	
 		services.AddHangfire(config => config
 	  .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
 	  .UseSimpleAssemblyNameTypeSerializer()
 	  .UseRecommendedSerializerSettings()
 	  .UseStorage(new MySqlStorage(connectionString, new MySqlStorageOptions
 	  {
+		  TransactionTimeout = TimeSpan.FromMinutes(1),
 		  QueuePollInterval = TimeSpan.FromSeconds(15),
 		  JobExpirationCheckInterval = TimeSpan.FromHours(1),
 		  CountersAggregateInterval = TimeSpan.FromMinutes(5),

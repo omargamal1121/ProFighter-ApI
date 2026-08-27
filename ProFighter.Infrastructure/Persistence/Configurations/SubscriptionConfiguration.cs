@@ -40,5 +40,22 @@ public class SubscriptionConfiguration : IEntityTypeConfiguration<Subscription>
         // Indexes
         builder.HasIndex(s => s.RekazSubscriptionId)
             .IsUnique();
+
+        // Composite indexes for GetMySubscriptions query patterns.
+        // All queries filter by (CustomerId, Status) so this is the base covering index.
+        builder.HasIndex(s => new { s.CustomerId, s.Status })
+            .HasDatabaseName("IX_Subscriptions_CustomerId_Status");
+
+        // Active group: ORDER BY EndDate ASC
+        builder.HasIndex(s => new { s.CustomerId, s.Status, s.EndDate })
+            .HasDatabaseName("IX_Subscriptions_CustomerId_Status_EndDate");
+
+        // StartingSoon group: ORDER BY StartDate ASC
+        builder.HasIndex(s => new { s.CustomerId, s.Status, s.StartDate })
+            .HasDatabaseName("IX_Subscriptions_CustomerId_Status_StartDate");
+
+        // Pending / Paused groups: ORDER BY CreatedAt DESC
+        builder.HasIndex(s => new { s.CustomerId, s.Status, s.CreatedAt })
+            .HasDatabaseName("IX_Subscriptions_CustomerId_Status_CreatedAt");
     }
 }

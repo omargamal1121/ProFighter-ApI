@@ -3,6 +3,7 @@ using ProFighter.Infrastructure;
 using ProFighter.Infrastructure.Auth;
 using ProFighter.Application;
 using ProFighter.API.Middleware;
+using Serilog;
 
 namespace ProFighter.API
 {
@@ -11,6 +12,18 @@ namespace ProFighter.API
 		public static void Main(string[] args)
 		{
 			var builder = WebApplication.CreateBuilder(args);
+
+			Log.Logger = new LoggerConfiguration()
+				.ReadFrom.Configuration(builder.Configuration)
+				.WriteTo.Console()
+				.WriteTo.File(
+					path: "Logs/log-.txt",
+					rollingInterval: RollingInterval.Day,
+					retainedFileCountLimit: 14,
+					outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+				.CreateLogger();
+
+			builder.Host.UseSerilog();
 
 			// Add services to the container.
 

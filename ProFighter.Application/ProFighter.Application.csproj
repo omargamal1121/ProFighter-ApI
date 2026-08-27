@@ -10,6 +10,7 @@
     <PackageReference Include="MediatR" Version="12.2.0" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.9.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.1" />
     <ProjectReference Include="..\ProFighter.Domain\ProFighter.Domain.csproj" />
   </ItemGroup>
 

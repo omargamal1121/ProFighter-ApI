@@ -77,7 +77,7 @@ public class CustomerProvisioningService : ICustomerProvisioningService
         return customer.Id;
     }
 
-    public async Task<Guid> ProvisionLocalCustomerAsync(
+    public async Task<Customer> ProvisionLocalCustomerAsync(
         Guid rekazCustomerId, string name, string mobileNumber, string? email,
         CustomerSource source, CancellationToken ct = default)
     {
@@ -88,22 +88,40 @@ public class CustomerProvisioningService : ICustomerProvisioningService
         var user = await _userManager.FindByNameAsync(normalizedUserName);
         if (user == null)
         {
-            var defaultPassword = _configuration["Identity:DefaultLegacyPassword"]
-                ?? throw new InvalidOperationException("Default legacy password 'Identity:DefaultLegacyPassword' is not configured.");
+            try
+            {
+                var defaultPassword = _configuration["Identity:DefaultLegacyPassword"]
+                    ?? throw new InvalidOperationException("Default legacy password 'Identity:DefaultLegacyPassword' is not configured.");
 
-            user = await CreateIdentityUserAsync(normalizedUserName, mobileNumber, email, defaultPassword, mustChangePassword: true, ct);
+                user = await CreateIdentityUserAsync(normalizedUserName, mobileNumber, email, defaultPassword, mustChangePassword: true, ct);
+            }
+            catch (DbUpdateException ex) when (IsDuplicateUserNameError(ex))
+            {
+                user = await _userManager.FindByNameAsync(normalizedUserName)
+                    ?? throw new InvalidOperationException(
+                        $"Duplicate username conflict for {normalizedUserName}, but user not found on re-lookup.", ex);
+            }
         }
 
-        var customerExists = await _context.Customers.AnyAsync(c => c.Id == user.Id, ct);
-        if (customerExists)
+        var existingCustomer = await _context.Customers.FirstOrDefaultAsync(c => c.Id == user.Id, ct);
+        if (existingCustomer != null)
         {
-            return user.Id;
+            return existingCustomer;
         }
 
         var customer = new Customer(user.Id, name, mobileNumber, source, email, rekazCustomerId, isFirstLogin: true);
         _context.Customers.Add(customer);
 
-        return customer.Id;
+        return customer;
+    }
+
+    private bool IsDuplicateUserNameError(DbUpdateException ex)
+    {
+        if (ex.InnerException is MySqlConnector.MySqlException mySqlEx)
+        {
+            return mySqlEx.Number == 1062;
+        }
+        return false;
     }
 
     private async Task<ApplicationUser> CreateIdentityUserAsync(

@@ -5,6 +5,7 @@ using ProFighter.Application.Common;
 using ProFighter.Application.Subscriptions.Commands.CreateSubscription;
 using ProFighter.Application.Subscriptions.Commands.SyncSubscriptions;
 using ProFighter.Application.Subscriptions.Queries.GetCustomerSubscriptions;
+using ProFighter.Application.Subscriptions.Queries.GetMySubscriptions;
 using ProFighter.Application.Subscriptions.Queries.GetSubscriptionById;
 using ProFighter.Application.Subscriptions.Queries.GetSubscriptions;
 using ProFighter.Domain.Enums;
@@ -56,6 +57,40 @@ public class SubscriptionsController : BaseController
         return Ok(ApiResponse<SyncSubscriptionsResult>.CreateSuccessResponse(
             $"Subscription synchronization completed. Total: {result.TotalProcessed}, Created: {result.Created}, Updated: {result.Updated}, Skipped: {result.Skipped}.",
             result, 200));
+    }
+
+    /// <summary>
+    /// Get the authenticated user's own subscriptions from the local database.
+    /// CustomerId is resolved from the JWT — the client cannot supply another user's ID.
+    /// Optionally filter by status (e.g. Active, Pending, Expired). No filter = returns all statuses.
+    /// Results are sorted by EndDate ASC and paginated.
+    /// </summary>
+    [HttpGet("me")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<GetMySubscriptionsResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<ApiResponse<GetMySubscriptionsResult>>> GetMySubscriptions(
+        [FromQuery] string? status = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
+    {
+        var customerId = GetCurrentUserId();
+        if (customerId is null)
+            return Unauthorized(ApiResponse<GetMySubscriptionsResult>.CreateErrorResponse(
+                "Unauthorized",
+                new ErrorResponse("Unauthorized", new List<string> { "User identity could not be resolved from the token." }),
+                401));
+
+        var query = new GetMySubscriptionsQuery(
+            CustomerId: customerId.Value,
+            Status:     status,
+            Page:       page,
+            PageSize:   pageSize);
+
+        var result = await _mediator.Send(query, cancellationToken);
+        return Ok(ApiResponse<GetMySubscriptionsResult>.CreateSuccessResponse(
+            "Subscriptions retrieved successfully.", result, 200));
     }
 
     /// <summary>

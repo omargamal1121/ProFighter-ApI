@@ -123,23 +123,18 @@ public class SyncSubscriptionsCommandHandler : IRequestHandler<SyncSubscriptions
                 return SyncResult.Skipped;
             }
 
-            var newCustomerId = await _provisioningService.ProvisionLocalCustomerAsync(
+            customer = await _provisioningService.ProvisionLocalCustomerAsync(
                 rekazCustomer.Id, rekazCustomer.Name, rekazCustomer.MobileNumber, rekazCustomer.Email,
                 CustomerSource.LegacyRekazImport, ct);
-
-            customer = await _context.Customers.FirstAsync(c => c.Id == newCustomerId, ct);
         }
 
-        // Check if subscription exists locally by RekazSubscriptionId
+      
         var existingSubscription = await _context.Subscriptions
             .FirstOrDefaultAsync(s => s.RekazSubscriptionId == rekazSubscription.Id, ct);
 
         if (existingSubscription is null)
         {
-            // Create new subscription
-            // TODO: mapping a Rekaz priceId to our local SubscriptionType (MartialArts/Swimming)
-            // requires a priceId → SubscriptionType lookup not yet built. Defaulting to MartialArts
-            var newSubscription = new Subscription(
+              var newSubscription = new Subscription(
                 id: Guid.NewGuid(),
                 customerId: customer.Id,
                 rekazSubscriptionId: rekazSubscription.Id,

@@ -42,6 +42,8 @@ public record RekazPricingDto(
     int Type,
     decimal Amount,
     decimal? DiscountedAmount,
+    DateTime? DiscountValidFrom,
+    DateTime? DiscountValidUntil,
     string? Sku,
     int? Duration,
     int? BillingCycle,

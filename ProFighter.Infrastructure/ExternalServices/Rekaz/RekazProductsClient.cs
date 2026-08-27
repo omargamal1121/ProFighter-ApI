@@ -125,6 +125,8 @@ public sealed class RekazProductsClient : IRekazProductsClient
             Name: pr.Name,
             Amount: pr.Amount,
             DiscountedAmount: pr.DiscountedAmount,
+            DiscountValidFrom: pr.DiscountValidFrom,
+            DiscountValidUntil: pr.DiscountValidUntil,
             IsRecurring: pr.Type == 2   // PriceType: 2 = Recurring
         );
 }
