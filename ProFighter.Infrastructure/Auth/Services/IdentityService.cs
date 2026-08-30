@@ -76,6 +76,13 @@ public sealed class IdentityService : IIdentityService
         _logger.LogInformation("ResetPasswordAsync — success for UserId: {UserId}", userId);
     }
 
+    public async Task<bool> IsEmailUniqueAsync(string email, Guid excludeUserId, CancellationToken ct = default)
+    {
+        var existing = await _userManager.FindByEmailAsync(email);
+        // Unique if nobody has that email, or only the same user has it
+        return existing is null || existing.Id == excludeUserId;
+    }
+
     public async Task SetEmailAsync(Guid userId, string email, CancellationToken ct = default)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString())

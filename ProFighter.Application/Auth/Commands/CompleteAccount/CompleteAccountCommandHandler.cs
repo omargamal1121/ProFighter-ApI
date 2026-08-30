@@ -37,6 +37,11 @@ public sealed class CompleteAccountCommandHandler : IRequestHandler<CompleteAcco
 
     public async Task<CompleteAccountResult> Handle(CompleteAccountCommand request, CancellationToken cancellationToken)
     {
+        // Validate email uniqueness before starting the transaction
+        var isUnique = await _identityService.IsEmailUniqueAsync(request.Email, request.UserId, cancellationToken);
+        if (!isUnique)
+            throw new InvalidOperationException($"The email address '{request.Email}' is already in use by another account.");
+
         // Execute the identity updates inside a transaction
         var newSecurityStamp = await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {

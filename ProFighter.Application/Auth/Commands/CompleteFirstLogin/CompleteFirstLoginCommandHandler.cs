@@ -13,6 +13,7 @@ public sealed class CompleteFirstLoginCommandHandler : IRequestHandler<CompleteF
 {
     private readonly IFirstLoginTokenService _firstLoginTokenService;
     private readonly IAuthenticationService _authenticationService;
+    private readonly IIdentityService _identityService;
     private readonly IApplicationDbContext _context;
     private readonly ITokenService _tokenService;
     private readonly IEmailConfirmationService _emailConfirmationService;
@@ -21,6 +22,7 @@ public sealed class CompleteFirstLoginCommandHandler : IRequestHandler<CompleteF
     public CompleteFirstLoginCommandHandler(
         IFirstLoginTokenService firstLoginTokenService,
         IAuthenticationService authenticationService,
+        IIdentityService identityService,
         IApplicationDbContext context,
         ITokenService tokenService,
         IEmailConfirmationService emailConfirmationService,
@@ -28,6 +30,7 @@ public sealed class CompleteFirstLoginCommandHandler : IRequestHandler<CompleteF
     {
         _firstLoginTokenService = firstLoginTokenService;
         _authenticationService = authenticationService;
+        _identityService = identityService;
         _context = context;
         _tokenService = tokenService;
         _emailConfirmationService = emailConfirmationService;
@@ -43,14 +46,31 @@ public sealed class CompleteFirstLoginCommandHandler : IRequestHandler<CompleteF
         var customer = await _context.Customers.FirstOrDefaultAsync(c => c.MobileNumber == mobileNumber, cancellationToken)
             ?? throw new InvalidOperationException($"No customer found for mobile number associated with this token.");
 
+        var normalizedEmail = request.Email?.Trim().ToLowerInvariant();
+        if (!string.IsNullOrEmpty(normalizedEmail))
+        {
+            var isIdentityUnique = await _identityService.IsEmailUniqueAsync(normalizedEmail, customer.Id, cancellationToken);
+            if (!isIdentityUnique)
+                throw new InvalidOperationException($"The email address '{request.Email}' is already in use by another account.");
+
+            var isCustomerUnique = !await _context.Customers.AnyAsync(c => c.Email == normalizedEmail && c.Id != customer.Id, cancellationToken);
+            if (!isCustomerUnique)
+                throw new InvalidOperationException($"The email address '{request.Email}' is already in use by another account.");
+        }
+
         await _authenticationService.SetPasswordAndEmailAsync(customer.Id, request.NewPassword, request.Email, cancellationToken);
 
         // Update Customer entity with email and mark first login as completed
         try
         {
-            customer.UpdateProfile(customer.Name, customer.MobileNumber, request.Email);
+            customer.UpdateProfile(customer.Name, customer.MobileNumber, normalizedEmail);
             customer.MarkFirstLoginCompleted();
             await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Duplicate email encountered during Customer update for {CustomerId}.", customer.Id);
+            throw new InvalidOperationException($"The email address '{request.Email}' is already in use by another account.", ex);
         }
         catch (Exception ex)
         {

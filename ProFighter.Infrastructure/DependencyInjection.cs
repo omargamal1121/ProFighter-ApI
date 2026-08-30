@@ -6,12 +6,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using ProFighter.Application.Common.Interfaces;
 using ProFighter.Application.Common.Interfaces.Auth;
+using ProFighter.Application.Subscriptions.Services;
 using ProFighter.Infrastructure.Auth.Services;
 using ProFighter.Infrastructure.Caching;
 using ProFighter.Infrastructure.ExternalServices.Rekaz;
 using ProFighter.Infrastructure.Identity;
 using ProFighter.Infrastructure.Persistence;
 using Hangfire.MySql;
+using Google.Apis.Auth.OAuth2;
 
 namespace ProFighter.Infrastructure;
 
@@ -38,6 +40,7 @@ public static class DependencyInjection
         services.AddHttpClient<IRekazProductsClient, RekazProductsClient>("RekazClient");
         services.AddHttpClient<IRekazCustomersClient, RekazCustomersClient>("RekazClient");
         services.AddHttpClient<IRekazSubscriptionsClient, RekazSubscriptionsClient>("RekazClient");
+        services.AddHttpClient<IRekazTransactionsClient, RekazTransactionsClient>("RekazClient");
 
         // MySQL DbContext & Identity
         var connectionString = configuration.GetConnectionString("DefaultConnection")
@@ -71,7 +74,7 @@ public static class DependencyInjection
 	  .UseStorage(new MySqlStorage(connectionString, new MySqlStorageOptions
 	  {
 		  TransactionTimeout = TimeSpan.FromMinutes(1),
-		  QueuePollInterval = TimeSpan.FromSeconds(15),
+		  QueuePollInterval = TimeSpan.FromSeconds(30),
 		  JobExpirationCheckInterval = TimeSpan.FromHours(1),
 		  CountersAggregateInterval = TimeSpan.FromMinutes(5),
 		  PrepareSchemaIfNecessary = true,
@@ -81,8 +84,8 @@ public static class DependencyInjection
 
 		services.AddHangfireServer(options =>
         {
-            options.WorkerCount = Environment.ProcessorCount * 2;
-            options.Queues = new[] { "default", "critical", "email" };
+            options.WorkerCount = 4;
+            options.Queues = new[] { "critical", "email", "default" };
             options.ServerName = $"ProFighter-{Environment.MachineName}";
         });
 
@@ -113,7 +116,28 @@ public static class DependencyInjection
         services.AddSingleton<IPasswordResetOtpService, Caching.PasswordResetOtpService>();
         services.AddSingleton<IEmailConfirmationOtpService, Caching.EmailConfirmationOtpService>();
 
+        // AI Services
+        services.AddScoped<IAiPlanService, Services.AiPlanService>();
+
+        // Firebase Push Notifications
+        var firebaseCredentialsFileName = configuration["Firebase:CredentialsFileName"];
+        if (!string.IsNullOrEmpty(firebaseCredentialsFileName))
+        {
+            var path = Path.Combine(Directory.GetCurrentDirectory(), "Secrets", firebaseCredentialsFileName);
+            if (File.Exists(path) && FirebaseAdmin.FirebaseApp.DefaultInstance == null)
+            {
+                FirebaseAdmin.FirebaseApp.Create(new FirebaseAdmin.AppOptions()
+                {
+					Credential = Google.Apis.Auth.OAuth2.GoogleCredential.FromFile(path)
+
+				});
+            }
+        }
+        services.AddScoped<INotificationService, Services.FirebaseNotificationService>();
+
         // Webhook Processing
+        services.AddScoped<IRekazSubscriptionEventHandler, ProFighter.Application.Subscriptions.Services.RekazSubscriptionEventHandler>();
+        services.AddScoped<IRekazTransactionEventHandler, RekazTransactionEventHandler>();
         services.AddScoped<IRekazWebhookProcessor, ProFighter.Application.Subscriptions.Services.RekazWebhookProcessor>();
 
         return services;

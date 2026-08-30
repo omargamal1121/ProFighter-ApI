@@ -16,6 +16,7 @@ public class RekazSubscriptionEventHandler : IRekazSubscriptionEventHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly IRekazSubscriptionsClient _subscriptionsClient;
     private readonly IRekazCustomerSyncService _customerSyncService;
+    private readonly INotificationService _notificationService;
     private readonly ILogger<RekazSubscriptionEventHandler> _logger;
 
     public RekazSubscriptionEventHandler(
@@ -23,12 +24,14 @@ public class RekazSubscriptionEventHandler : IRekazSubscriptionEventHandler
         IUnitOfWork unitOfWork,
         IRekazSubscriptionsClient subscriptionsClient,
         IRekazCustomerSyncService customerSyncService,
+        INotificationService notificationService,
         ILogger<RekazSubscriptionEventHandler> logger)
     {
         _context = context;
         _unitOfWork = unitOfWork;
         _subscriptionsClient = subscriptionsClient;
         _customerSyncService = customerSyncService;
+        _notificationService = notificationService;
         _logger = logger;
     }
 
@@ -71,6 +74,8 @@ public class RekazSubscriptionEventHandler : IRekazSubscriptionEventHandler
                 {
                     _logger.LogInformation("Updated local subscription {LocalId} for Rekaz subscription {RekazId} via webhook event {EventName}. Status changed from {PreviousStatus} to {NewStatus}", 
                         existingSubscription.Id, rekazSubscriptionId, eventName, previousStatus, existingSubscription.Status);
+
+                    await TrySendStatusNotification(customer.Id, existingSubscription.Status, innerCt);
                 }
                 else
                 {
@@ -82,5 +87,21 @@ public class RekazSubscriptionEventHandler : IRekazSubscriptionEventHandler
             await _context.SaveChangesAsync(innerCt);
             return true;
         }, ct);
+    }
+
+    private async Task TrySendStatusNotification(Guid customerId, string newStatus, CancellationToken ct)
+    {
+        var messages = new Dictionary<string, (string Title, string Body)>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "Active", ("Subscription Activated", "Your subscription is now active.") },
+            { "Activated", ("Subscription Activated", "Your subscription is now active.") },
+            { "Expired", ("Subscription Expired", "Your subscription has expired.") },
+            { "Cancelled", ("Subscription Cancelled", "Your subscription has been cancelled.") }
+        };
+
+        if (messages.TryGetValue(newStatus, out var msg))
+        {
+            await _notificationService.SendToUserAsync(customerId, msg.Title, msg.Body, null, ct);
+        }
     }
 }

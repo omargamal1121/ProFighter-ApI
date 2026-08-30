@@ -119,3 +119,6 @@ _ReSharper*/
 *.bak
 *.swp
 node_modules/
+
+# Data Protection Keys
+keys/

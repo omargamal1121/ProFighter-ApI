@@ -12,15 +12,18 @@ public class RekazWebhookProcessor : IRekazWebhookProcessor
 {
     private readonly IApplicationDbContext _context;
     private readonly IRekazSubscriptionEventHandler _subscriptionEventHandler;
+    private readonly IRekazTransactionEventHandler _transactionEventHandler;
     private readonly ILogger<RekazWebhookProcessor> _logger;
 
     public RekazWebhookProcessor(
         IApplicationDbContext context,
         IRekazSubscriptionEventHandler subscriptionEventHandler,
+        IRekazTransactionEventHandler transactionEventHandler,
         ILogger<RekazWebhookProcessor> logger)
     {
         _context = context;
         _subscriptionEventHandler = subscriptionEventHandler;
+        _transactionEventHandler = transactionEventHandler;
         _logger = logger;
     }
 
@@ -35,6 +38,11 @@ public class RekazWebhookProcessor : IRekazWebhookProcessor
         {
             var dataId = Guid.Parse(payload.GetProperty("Data").GetProperty("Id").GetString()!);
             await _subscriptionEventHandler.HandleAsync(dataId, entry.EventName, ct);
+        }
+        else if (entry.EventName.StartsWith("Transaction", StringComparison.Ordinal) || entry.EventName.StartsWith("Invoice", StringComparison.Ordinal))
+        {
+            var dataId = Guid.Parse(payload.GetProperty("Data").GetProperty("Id").GetString()!);
+            await _transactionEventHandler.HandleAsync(dataId, entry.EventName, ct);
         }
         else
         {

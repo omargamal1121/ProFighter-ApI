@@ -11,6 +11,7 @@ public interface IApplicationDbContext
     DbSet<RefreshToken> RefreshTokens { get; }
     DbSet<Subscription> Subscriptions { get; }
     DbSet<RekazWebhookInboxEntry> RekazWebhookInboxEntries { get; }
+    DbSet<DeviceToken> DeviceTokens { get; }
     DatabaseFacade Database { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

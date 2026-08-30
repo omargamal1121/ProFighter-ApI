@@ -3,10 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ProFighter.Application.Common;
 using ProFighter.Application.Subscriptions.Commands.CreateSubscription;
-using ProFighter.Application.Subscriptions.Commands.SyncSubscriptions;
 using ProFighter.Application.Subscriptions.Queries.GetCustomerSubscriptions;
 using ProFighter.Application.Subscriptions.Queries.GetMySubscriptions;
-using ProFighter.Application.Subscriptions.Queries.GetSubscriptionById;
 using ProFighter.Application.Subscriptions.Queries.GetSubscriptions;
 using ProFighter.Domain.Enums;
 
@@ -41,22 +39,14 @@ public class SubscriptionsController : BaseController
     }
 
     /// <summary>
-    /// Synchronize subscriptions from Rekaz to local database.
-    /// This is an admin operation that fetches all subscriptions from Rekaz
-    /// and creates/updates local records accordingly.
-    /// Requires authentication.
+    /// Returns the allowed SubscriptionStatus enum values that can be used as a status filter.
     /// </summary>
-    [HttpPost("sync")]
-    //[Authorize]
-    [ProducesResponseType(typeof(ApiResponse<SyncSubscriptionsResult>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<ApiResponse<SyncSubscriptionsResult>>> SyncSubscriptions(
-        CancellationToken cancellationToken)
+    [HttpGet("statuses")]
+    [ProducesResponseType(typeof(ApiResponse<IEnumerable<string>>), StatusCodes.Status200OK)]
+    public ActionResult<ApiResponse<IEnumerable<string>>> GetStatuses()
     {
-        var result = await _mediator.Send(new SyncSubscriptionsCommand(), cancellationToken);
-        return Ok(ApiResponse<SyncSubscriptionsResult>.CreateSuccessResponse(
-            $"Subscription synchronization completed. Total: {result.TotalProcessed}, Created: {result.Created}, Updated: {result.Updated}, Skipped: {result.Skipped}.",
-            result, 200));
+        var statuses = Enum.GetNames<SubscriptionStatus>();
+        return Ok(ApiResponse<IEnumerable<string>>.CreateSuccessResponse("Subscription statuses retrieved successfully.", statuses, 200));
     }
 
     /// <summary>
@@ -169,30 +159,4 @@ public class SubscriptionsController : BaseController
         return Ok(ApiResponse<GetSubscriptionsResult>.CreateSuccessResponse("Subscriptions retrieved successfully.", result, 200));
     }
 
-    /// <summary>
-    /// Get a specific subscription by Rekaz ID from the local database.
-    /// This reads from the ProFighter database, not from Rekaz.
-    /// Requires authentication.
-    /// </summary>
-    [HttpGet("by-rekaz-id/{rekazSubscriptionId}")]
-    //[Authorize]
-    [ProducesResponseType(typeof(ApiResponse<GetSubscriptionByIdResult>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<ApiResponse<GetSubscriptionByIdResult>>> GetSubscriptionById(
-        Guid rekazSubscriptionId,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await _mediator.Send(new GetSubscriptionByIdQuery(rekazSubscriptionId), cancellationToken);
-        
-        if (result.Subscription is null)
-        {
-            return NotFound(ApiResponse<GetSubscriptionByIdResult>.CreateErrorResponse(
-                "Subscription not found",
-                new ErrorResponse("NotFound", new List<string> { $"Subscription with Rekaz ID {rekazSubscriptionId} not found." }),
-                404));
-        }
-
-        return Ok(ApiResponse<GetSubscriptionByIdResult>.CreateSuccessResponse("Subscription retrieved successfully.", result, 200));
-    }
 }

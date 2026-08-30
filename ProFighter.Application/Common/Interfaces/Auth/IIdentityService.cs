@@ -35,6 +35,11 @@ public interface IIdentityService
     Task ResetPasswordAsync(Guid userId, string newPassword, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns true if no other user already has the given email address.
+    /// </summary>
+    Task<bool> IsEmailUniqueAsync(string email, Guid excludeUserId, CancellationToken ct = default);
+
+    /// <summary>
     /// Sets the user's email address.
     /// Throws <see cref="InvalidOperationException"/> on failure.
     /// </summary>
