@@ -14,5 +14,5 @@ public record FoodPlanResponse(
     List<MealItem> SampleMeals,
     string Notes);
 
-public record MacroSplit(int ProteinPercent, int CarbsPercent, int FatPercent);
+public record MacroSplit(int ProteinPercent, int CarbsPercent, int FatPercent, int ProteinGrams, int CarbsGrams, int FatGrams);
 public record MealItem(string Meal, string Example, int ApproxKcal);

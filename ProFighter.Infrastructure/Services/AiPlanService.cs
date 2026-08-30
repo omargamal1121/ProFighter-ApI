@@ -103,7 +103,7 @@ CRITICAL: ALL text values in the JSON output (including planTitle, notes, and th
     {
         var systemMessage = @"Generate a simple, general food/meal plan guideline based on user input.
 
-The sampleMeals' approxKcal values should roughly sum to dailyCalorieTarget. This is general fitness guidance, not medical or clinical nutrition advice. Do not give exact gram-level meal plans, or supplement/medication dosing or names. Always include in 'notes' a recommendation to consult a nutritionist or doctor before starting, especially with any health condition. If the inputs (e.g. resulting BMI) suggest an extreme or medically concerning profile, still return conservative general guidance and strengthen the consult-a-professional note — do not refuse to generate a plan.
+The sampleMeals' approxKcal values should roughly sum to dailyCalorieTarget. Also, calculate and provide the specific macro split in both percentages and grams based on the daily calorie target. This is general fitness guidance, not medical or clinical nutrition advice. Do not give exact gram-level meal plans, or supplement/medication dosing or names. Always include in 'notes' a recommendation to consult a nutritionist or doctor before starting, especially with any health condition. If the inputs (e.g. resulting BMI) suggest an extreme or medically concerning profile, still return conservative general guidance and strengthen the consult-a-professional note — do not refuse to generate a plan.
 CRITICAL: ALL text values in the JSON output (including planTitle, meal examples, meal names, and notes) MUST be written ONLY in Arabic. Do NOT include any English translations or text anywhere.";
 
         var bodyFatStr = input.BodyFatPercentage.HasValue ? input.BodyFatPercentage.Value.ToString() : "not provided";
@@ -128,9 +128,12 @@ Muscle mass: {muscleMassStr}";
               ""properties"": {
                 ""proteinPercent"": { ""type"": ""integer"" },
                 ""carbsPercent"": { ""type"": ""integer"" },
-                ""fatPercent"": { ""type"": ""integer"" }
+                ""fatPercent"": { ""type"": ""integer"" },
+                ""proteinGrams"": { ""type"": ""integer"" },
+                ""carbsGrams"": { ""type"": ""integer"" },
+                ""fatGrams"": { ""type"": ""integer"" }
               },
-              ""required"": [""proteinPercent"", ""carbsPercent"", ""fatPercent""],
+              ""required"": [""proteinPercent"", ""carbsPercent"", ""fatPercent"", ""proteinGrams"", ""carbsGrams"", ""fatGrams""],
               ""additionalProperties"": false
             },
             ""sampleMeals"": {
