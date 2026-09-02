@@ -719,10 +719,20 @@ namespace ProFighter.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CustomerId");
-
                     b.HasIndex("RekazSubscriptionId")
                         .IsUnique();
+
+                    b.HasIndex("CustomerId", "Status")
+                        .HasDatabaseName("IX_Subscriptions_CustomerId_Status");
+
+                    b.HasIndex("CustomerId", "Status", "CreatedAt")
+                        .HasDatabaseName("IX_Subscriptions_CustomerId_Status_CreatedAt");
+
+                    b.HasIndex("CustomerId", "Status", "EndDate")
+                        .HasDatabaseName("IX_Subscriptions_CustomerId_Status_EndDate");
+
+                    b.HasIndex("CustomerId", "Status", "StartDate")
+                        .HasDatabaseName("IX_Subscriptions_CustomerId_Status_StartDate");
 
                     b.ToTable("Subscriptions", (string)null);
                 });

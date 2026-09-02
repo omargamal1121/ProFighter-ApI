@@ -66,9 +66,7 @@ public class RekazWebhookController : ControllerBase
 
         var eventName = eventNameProp.GetString()!;
 
-        // Insert-if-absent: Id is the primary key, so duplicate deliveries are naturally
-        // detected here rather than treated as an error (Rekaz's docs explicitly warn
-        // duplicate deliveries are possible and delivery order is not guaranteed).
+       
         var alreadyExists = await _context.RekazWebhookInboxEntries.AnyAsync(w => w.Id == eventId, ct);
         if (!alreadyExists)
         {
@@ -78,10 +76,7 @@ public class RekazWebhookController : ControllerBase
 
             BackgroundJob.Enqueue<IRekazWebhookProcessor>(p => p.ProcessAsync(eventId, CancellationToken.None));
         }
-
-        // Never log the raw payload (may contain customer PII per Rekaz's own guidance) —
-        // log only event metadata.
-        _logger.LogInformation("Rekaz webhook received: {EventName} ({EventId})", eventName, eventId);
+     _logger.LogInformation("Rekaz webhook received: {EventName} ({EventId})", eventName, eventId);
 
         return Ok(); // any 2xx counts as success per Rekaz's delivery contract; queue real
                      // processing and acknowledge fast, per their docs.

@@ -12,7 +12,7 @@ using ProFighter.Infrastructure.Persistence;
 namespace ProFighter.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260815185415_init")]
+    [Migration("20260901143935_init")]
     partial class init
     {
         /// <inheritdoc />
@@ -142,6 +142,9 @@ namespace ProFighter.Infrastructure.Migrations
                     b.Property<string>("Email")
                         .HasMaxLength(150)
                         .HasColumnType("varchar(150)");
+
+                    b.Property<bool>("IsFirstLogin")
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int>("LoyaltyPointsBalance")
                         .HasColumnType("int");
@@ -719,10 +722,20 @@ namespace ProFighter.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CustomerId");
-
                     b.HasIndex("RekazSubscriptionId")
                         .IsUnique();
+
+                    b.HasIndex("CustomerId", "Status")
+                        .HasDatabaseName("IX_Subscriptions_CustomerId_Status");
+
+                    b.HasIndex("CustomerId", "Status", "CreatedAt")
+                        .HasDatabaseName("IX_Subscriptions_CustomerId_Status_CreatedAt");
+
+                    b.HasIndex("CustomerId", "Status", "EndDate")
+                        .HasDatabaseName("IX_Subscriptions_CustomerId_Status_EndDate");
+
+                    b.HasIndex("CustomerId", "Status", "StartDate")
+                        .HasDatabaseName("IX_Subscriptions_CustomerId_Status_StartDate");
 
                     b.ToTable("Subscriptions", (string)null);
                 });

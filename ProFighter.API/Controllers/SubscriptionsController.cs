@@ -6,6 +6,7 @@ using ProFighter.Application.Subscriptions.Commands.CreateSubscription;
 using ProFighter.Application.Subscriptions.Queries.GetCustomerSubscriptions;
 using ProFighter.Application.Subscriptions.Queries.GetMySubscriptions;
 using ProFighter.Application.Subscriptions.Queries.GetSubscriptions;
+using ProFighter.Application.Subscriptions.Commands.SyncSubscriptions;
 using ProFighter.Domain.Enums;
 
 namespace ProFighter.API.Controllers;
@@ -31,9 +32,17 @@ public class SubscriptionsController : BaseController
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<CreateSubscriptionResult>>> CreateSubscription(
-        [FromBody] CreateSubscriptionCommand command,
+        [FromBody] CreateSubscriptionRequest request,
         CancellationToken cancellationToken)
     {
+        var customerId = GetCurrentUserId();
+        if (customerId is null)
+            return Unauthorized(ApiResponse<object>.CreateErrorResponse(
+                "Unauthorized",
+                new ErrorResponse("Unauthorized", "User identity could not be resolved from the token."),
+                401));
+
+        var command = new CreateSubscriptionCommand(customerId.Value, (SubscriptionType)1, request.PriceId, request.Quantity);
         var result = await _mediator.Send(command, cancellationToken);
         return Ok(ApiResponse<CreateSubscriptionResult>.CreateSuccessResponse("Subscription created successfully.", result, 200));
     }
@@ -159,4 +168,17 @@ public class SubscriptionsController : BaseController
         return Ok(ApiResponse<GetSubscriptionsResult>.CreateSuccessResponse("Subscriptions retrieved successfully.", result, 200));
     }
 
+    /// <summary>
+    /// Sync subscriptions from Rekaz to the local database.
+    /// </summary>
+    [HttpPost("sync")]
+    [ProducesResponseType(typeof(ApiResponse<SyncSubscriptionsResult>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<SyncSubscriptionsResult>>> SyncSubscriptions(CancellationToken cancellationToken = default)
+    {
+        var command = new SyncSubscriptionsCommand();
+        var result = await _mediator.Send(command, cancellationToken);
+        return Ok(ApiResponse<SyncSubscriptionsResult>.CreateSuccessResponse("Subscriptions synchronized successfully.", result, 200));
+    }
 }
+
+public record CreateSubscriptionRequest(Guid PriceId, int Quantity);

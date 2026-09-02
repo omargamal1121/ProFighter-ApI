@@ -68,7 +68,8 @@ public class GlobalExceptionMiddleware : IMiddleware
         };
 
         context.Response.StatusCode = (int)response.StatusCode;
-        await context.Response.WriteAsync(JsonSerializer.Serialize(response));
+        var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+        await context.Response.WriteAsync(JsonSerializer.Serialize(response.Response, jsonOptions));
     }
 
     private static (ApiResponse<object> Response, HttpStatusCode StatusCode) CreateErrorResponse(

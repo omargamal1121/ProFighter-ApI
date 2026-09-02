@@ -73,11 +73,13 @@ public class CreateSubscriptionCommandHandler : IRequestHandler<CreateSubscripti
             CustomerId: customer.RekazCustomerId,
             NewCustomerDetails: null, // never used — Rekaz-first guarantees RekazCustomerId always exists by now
             StartAt: startAt,
-            BranchId: null,
+            BranchId: Guid.Parse("3a226f63-0e03-a632-c8c3-acb916184a42"),
             Items: new List<RekazSubscriptionItemInput> { new(request.PriceId, request.Quantity) },
             OccurenceDays: null,
             Discount: null
         ), ct);
+
+        var fullPaymentLink = "https://platform.rekaz.io" + rekazResult.PaymentLink;
 
         await _unitOfWork.ExecuteInTransactionAsync(async innerCt =>
         {
@@ -90,6 +92,7 @@ public class CreateSubscriptionCommandHandler : IRequestHandler<CreateSubscripti
             // matching this pending local row to its eventual webhook (e.g. by CustomerId +
             // StartAt + Pending status, or by RekazInvoiceId if the webhook/re-fetch response
             // ever exposes invoice linkage) — needs a deliberate follow-up decision.
+
             var subscription = new Subscription(
                 id: Guid.NewGuid(),
                 customerId: customer.Id,
@@ -98,13 +101,13 @@ public class CreateSubscriptionCommandHandler : IRequestHandler<CreateSubscripti
                 startDate: startAt,
                 price: 0,
                 rekazInvoiceId: rekazResult.InvoiceId,
-                paymentLink: rekazResult.PaymentLink);
+                paymentLink: fullPaymentLink);
 
             _context.Subscriptions.Add(subscription);
             await _context.SaveChangesAsync(innerCt);
             return true;
         }, ct);
 
-        return new CreateSubscriptionResult(rekazResult.InvoiceId, rekazResult.PaymentLink, isRenewal, startAt);
+        return new CreateSubscriptionResult(rekazResult.InvoiceId, fullPaymentLink, isRenewal, startAt);
     }
 }

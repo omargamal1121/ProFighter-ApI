@@ -30,21 +30,21 @@ public class RekazWebhookProcessor : IRekazWebhookProcessor
     public async Task ProcessAsync(Guid webhookEventId, CancellationToken ct = default)
     {
         var entry = await _context.RekazWebhookInboxEntries.FirstOrDefaultAsync(w => w.Id == webhookEventId, ct);
-        if (entry is null || entry.Processed) return; // already handled or somehow missing
+        if (entry is null || entry.Processed) return; 
 
         var payload = JsonSerializer.Deserialize<JsonElement>(entry.RawPayload);
 
-        if (entry.EventName.StartsWith("Subscription", StringComparison.Ordinal))
-        {
-            var dataId = Guid.Parse(payload.GetProperty("Data").GetProperty("Id").GetString()!);
-            await _subscriptionEventHandler.HandleAsync(dataId, entry.EventName, ct);
-        }
-        else if (entry.EventName.StartsWith("Transaction", StringComparison.Ordinal) || entry.EventName.StartsWith("Invoice", StringComparison.Ordinal))
-        {
-            var dataId = Guid.Parse(payload.GetProperty("Data").GetProperty("Id").GetString()!);
-            await _transactionEventHandler.HandleAsync(dataId, entry.EventName, ct);
-        }
-        else
+		if (entry.EventName.StartsWith("Subscription", StringComparison.Ordinal))
+		{
+			var dataId = ExtractDataId(payload);
+			await _subscriptionEventHandler.HandleAsync(dataId, entry.EventName, ct);
+		}
+		else if (entry.EventName.StartsWith("Transaction", StringComparison.Ordinal) || entry.EventName.StartsWith("Invoice", StringComparison.Ordinal))
+		{
+			var dataId = ExtractDataId(payload);
+			await _transactionEventHandler.HandleAsync(dataId, entry.EventName, ct);
+		}
+		else
         {
             _logger.LogInformation("Rekaz webhook {EventName} ({EventId}) recorded, no handler implemented yet.", entry.EventName, webhookEventId);
         }
@@ -52,4 +52,26 @@ public class RekazWebhookProcessor : IRekazWebhookProcessor
         entry.MarkProcessed();
         await _context.SaveChangesAsync(ct);
     }
+	private static bool TryGetPropertyCI(JsonElement element, string propertyName, out JsonElement value)
+	{
+		foreach (var property in element.EnumerateObject())
+		{
+			if (string.Equals(property.Name, propertyName, StringComparison.OrdinalIgnoreCase))
+			{
+				value = property.Value;
+				return true;
+			}
+		}
+		value = default;
+		return false;
+	}
+
+	private static Guid ExtractDataId(JsonElement payload)
+	{
+		if (!TryGetPropertyCI(payload, "Data", out var data))
+			throw new InvalidOperationException("Webhook payload missing 'data' property.");
+		if (!TryGetPropertyCI(data, "Id", out var id))
+			throw new InvalidOperationException("Webhook payload missing 'data.id' property.");
+		return Guid.Parse(id.GetString()!);
+	}
 }

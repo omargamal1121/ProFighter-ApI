@@ -83,6 +83,7 @@ namespace ProFighter.Infrastructure.Migrations
                     Source = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     LoyaltyPointsBalance = table.Column<int>(type: "int", nullable: false),
+                    IsFirstLogin = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     DeletedAt = table.Column<DateTime>(type: "datetime(6)", nullable: true)
@@ -789,9 +790,24 @@ namespace ProFighter.Infrastructure.Migrations
                 column: "SubscriptionId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Subscriptions_CustomerId",
+                name: "IX_Subscriptions_CustomerId_Status",
                 table: "Subscriptions",
-                column: "CustomerId");
+                columns: new[] { "CustomerId", "Status" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Subscriptions_CustomerId_Status_CreatedAt",
+                table: "Subscriptions",
+                columns: new[] { "CustomerId", "Status", "CreatedAt" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Subscriptions_CustomerId_Status_EndDate",
+                table: "Subscriptions",
+                columns: new[] { "CustomerId", "Status", "EndDate" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Subscriptions_CustomerId_Status_StartDate",
+                table: "Subscriptions",
+                columns: new[] { "CustomerId", "Status", "StartDate" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Subscriptions_RekazSubscriptionId",
