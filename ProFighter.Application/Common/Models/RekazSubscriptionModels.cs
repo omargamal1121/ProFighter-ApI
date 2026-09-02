@@ -59,7 +59,8 @@ public record RekazSubscriptionResult(
     decimal RemainingAmount,
     bool IsPaused,
     DateTime? PausedAt,
-    DateTime? ResumeAt
+    DateTime? ResumeAt,
+    string? Name = null
 )
 {
     public bool IsFullyPaid => RemainingAmount <= 0;

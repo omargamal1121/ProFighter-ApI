@@ -179,6 +179,22 @@ public class SubscriptionsController : BaseController
         var result = await _mediator.Send(command, cancellationToken);
         return Ok(ApiResponse<SyncSubscriptionsResult>.CreateSuccessResponse("Subscriptions synchronized successfully.", result, 200));
     }
+
+    /// <summary>
+    /// Enqueue a one-time Hangfire job to backfill the Name column for all existing subscriptions where Name is NULL.
+    /// </summary>
+    [HttpPost("backfill-names")]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+    public ActionResult<ApiResponse<string>> BackfillNames()
+    {
+        var jobId = Hangfire.BackgroundJob.Enqueue<ProFighter.Application.Subscriptions.Jobs.SubscriptionNameBackfillJob>(
+            job => job.RunAsync(CancellationToken.None));
+
+        return Ok(ApiResponse<string>.CreateSuccessResponse(
+            "Subscription name backfill job enqueued successfully.",
+            $"Hangfire Job ID: {jobId}",
+            200));
+    }
 }
 
 public record CreateSubscriptionRequest(Guid PriceId, int Quantity);

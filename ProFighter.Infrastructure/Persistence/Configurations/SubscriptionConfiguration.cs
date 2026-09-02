@@ -15,6 +15,10 @@ public class SubscriptionConfiguration : IEntityTypeConfiguration<Subscription>
         builder.Property(s => s.PaymentLink)
             .HasMaxLength(2048);
 
+        builder.Property(s => s.Name)
+            .HasMaxLength(100)
+            .IsRequired(false);
+
         builder.Property(s => s.Type)
             .HasConversion<string>()
             .HasMaxLength(50)

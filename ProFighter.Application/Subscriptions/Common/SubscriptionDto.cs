@@ -4,6 +4,7 @@ public record SubscriptionDto(
     Guid Id,
     Guid CustomerId,
     Guid RekazSubscriptionId,
+    string? Name,
     string Type,
     string Status,
     DateTime StartDate,

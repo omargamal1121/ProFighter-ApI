@@ -27,11 +27,13 @@ public record GetMySubscriptionsResult(
 public record MySubscriptionDto(
     Guid Id,
     Guid RekazSubscriptionId,
+    string? Name,
     string Type,
     string Status,
     DateTime StartDate,
     DateTime? EndDate,
     decimal Price,
     DateTime CreatedAt,
-    DateTime? UpdatedAt
+    DateTime? UpdatedAt,
+    string? PaymentLink
 );

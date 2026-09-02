@@ -1,7 +1,5 @@
 using System.Text.Json.Serialization;
 
-using System.Text.Json.Serialization;
-
 namespace ProFighter.Infrastructure.ExternalServices.Rekaz.Dtos;
 
 /// <summary>
@@ -30,6 +28,14 @@ public record RekazSubscriptionDto(
 );
 
 /// <summary>
+/// Localized name object returned by Rekaz API inside an item (e.g. localizedProductName).
+/// Contains language codes as keys (e.g. "ar", "en") and the translated names as values.
+/// </summary>
+public record RekazLocalizedNameDto(
+    Dictionary<string, string>? OtherLanguages
+);
+
+/// <summary>
 /// An item inside a subscription DTO.
 /// Additional fields from Rekaz API are ignored using JsonExtensionData to prevent deserialization errors.
 /// </summary>
@@ -38,7 +44,8 @@ public record RekazSubscriptionItemDto(
     Guid PriceId,
     string? Name,
     string? ProductName,
-    int Quantity
+    int Quantity,
+    RekazLocalizedNameDto? LocalizedProductName = null
 );
 
 /// <summary>

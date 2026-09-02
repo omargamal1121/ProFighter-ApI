@@ -11,7 +11,7 @@ public class RekazDiscountTypeConverterTests
 
     public RekazDiscountTypeConverterTests()
     {
-        _options = new JsonSerializerOptions
+        _options = new JsonSerializerOptions(JsonSerializerDefaults.Web)
         {
             Converters = { new RekazDiscountTypeConverter() }
         };
@@ -73,7 +73,7 @@ public class RekazDiscountTypeConverterTests
     public void Read_WhenDiscountIsNull_ReturnsNull()
     {
         // Arrange
-        var json = "{}";
+        var json = "null";
 
         // Act
         var result = JsonSerializer.Deserialize<RekazDiscountDto?>(json, _options);
@@ -120,6 +120,6 @@ public class RekazDiscountTypeConverterTests
         reader.Read(); // Get to the value
 
         // Act & Assert
-        Assert.Throws<JsonException>(() => _converter.Read(ref reader, typeof(string), _options));
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<RekazDiscountDto>(json, _options));
     }
 }

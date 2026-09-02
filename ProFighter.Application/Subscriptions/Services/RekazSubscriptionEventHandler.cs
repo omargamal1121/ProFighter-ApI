@@ -59,8 +59,9 @@ public class RekazSubscriptionEventHandler : IRekazSubscriptionEventHandler
                     rekazSubscriptionId: rekazSubscriptionId,
                     type: SubscriptionType.MartialArts, 
                     startDate: fetched.StartAt,
-                    price: fetched.TotalAmount);
-                newSubscription.SyncFromRekaz(fetched.Status, fetched.StartAt, fetched.EndAt, fetched.TotalAmount);
+                    price: fetched.TotalAmount,
+                    name: fetched.Name);
+                newSubscription.SyncFromRekaz(fetched.Status, fetched.StartAt, fetched.EndAt, fetched.TotalAmount, fetched.Name);
                 _context.Subscriptions.Add(newSubscription);
                 _logger.LogInformation("Created local subscription {LocalId} for Rekaz subscription {RekazId} via webhook event {EventName}", 
                     newSubscription.Id, rekazSubscriptionId, eventName);
@@ -68,7 +69,7 @@ public class RekazSubscriptionEventHandler : IRekazSubscriptionEventHandler
             else
             {
                 var previousStatus = existingSubscription.Status;
-                existingSubscription.SyncFromRekaz(fetched.Status, fetched.StartAt, fetched.EndAt, fetched.TotalAmount);
+                existingSubscription.SyncFromRekaz(fetched.Status, fetched.StartAt, fetched.EndAt, fetched.TotalAmount, fetched.Name);
                 
                 if (previousStatus != existingSubscription.Status)
                 {

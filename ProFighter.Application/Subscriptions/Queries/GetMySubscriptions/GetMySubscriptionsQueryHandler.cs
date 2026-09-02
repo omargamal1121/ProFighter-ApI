@@ -44,13 +44,15 @@ public class GetMySubscriptionsQueryHandler
             .Select(s => new MySubscriptionDto(
                 s.Id,
                 s.RekazSubscriptionId,
+                s.Name,
                 s.Type.ToString(),
                 s.Status,
                 s.StartDate,
                 s.EndDate,
                 s.Price,
                 s.CreatedAt,
-                s.UpdatedAt))
+                s.UpdatedAt,
+                s.PaymentLink))
             .ToListAsync(ct);
 
         _logger.LogInformation(

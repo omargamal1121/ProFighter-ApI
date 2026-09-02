@@ -140,8 +140,9 @@ public class SyncSubscriptionsCommandHandler : IRequestHandler<SyncSubscriptions
                 rekazSubscriptionId: rekazSubscription.Id,
                 type: SubscriptionType.MartialArts, // TODO: real priceId→Type mapping
                 startDate: rekazSubscription.StartAt,
-                price: rekazSubscription.TotalAmount);
-            newSubscription.SyncFromRekaz(rekazSubscription.Status, rekazSubscription.StartAt, rekazSubscription.EndAt, rekazSubscription.TotalAmount);
+                price: rekazSubscription.TotalAmount,
+                name: rekazSubscription.Name);
+            newSubscription.SyncFromRekaz(rekazSubscription.Status, rekazSubscription.StartAt, rekazSubscription.EndAt, rekazSubscription.TotalAmount, rekazSubscription.Name);
             _context.Subscriptions.Add(newSubscription);
             await _context.SaveChangesAsync(ct);
 
@@ -151,7 +152,7 @@ public class SyncSubscriptionsCommandHandler : IRequestHandler<SyncSubscriptions
         else
         {
             // Update existing subscription
-            existingSubscription.SyncFromRekaz(rekazSubscription.Status, rekazSubscription.StartAt, rekazSubscription.EndAt, rekazSubscription.TotalAmount);
+            existingSubscription.SyncFromRekaz(rekazSubscription.Status, rekazSubscription.StartAt, rekazSubscription.EndAt, rekazSubscription.TotalAmount, rekazSubscription.Name);
             await _context.SaveChangesAsync(ct);
 
             _logger.LogDebug("Updated local subscription for Rekaz subscription {SubscriptionId}", rekazSubscription.Id);

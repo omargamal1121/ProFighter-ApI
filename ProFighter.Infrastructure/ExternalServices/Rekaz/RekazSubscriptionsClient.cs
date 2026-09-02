@@ -223,8 +223,20 @@ public sealed class RekazSubscriptionsClient : IRekazSubscriptionsClient
         return "?" + string.Join("&", parts);
     }
 
-    private static RekazSubscriptionResult MapSubscription(RekazSubscriptionDto dto) =>
-        new(
+    internal static RekazSubscriptionResult MapSubscription(RekazSubscriptionDto dto)
+    {
+        string? name = null;
+        var firstItem = dto.Items?.FirstOrDefault();
+        if (firstItem?.LocalizedProductName?.OtherLanguages != null)
+        {
+            if (firstItem.LocalizedProductName.OtherLanguages.TryGetValue("ar", out var arName)
+                || firstItem.LocalizedProductName.OtherLanguages.TryGetValue("Ar", out arName))
+            {
+                name = arName;
+            }
+        }
+
+        return new(
             Id: dto.Id,
             SubscriptionCode: dto.SubscriptionCode,
             CustomerId: dto.CustomerId,
@@ -236,6 +248,8 @@ public sealed class RekazSubscriptionsClient : IRekazSubscriptionsClient
             RemainingAmount: dto.RemainingAmount,
             IsPaused: dto.IsPaused,
             PausedAt: dto.PausedAt,
-            ResumeAt: dto.ResumeAt
+            ResumeAt: dto.ResumeAt,
+            Name: name
         );
+    }
 }

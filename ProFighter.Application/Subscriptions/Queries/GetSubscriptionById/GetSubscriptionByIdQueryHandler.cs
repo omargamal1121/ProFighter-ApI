@@ -35,6 +35,7 @@ public class GetSubscriptionByIdQueryHandler : IRequestHandler<GetSubscriptionBy
             Id: subscription.Id,
             CustomerId: subscription.CustomerId,
             RekazSubscriptionId: subscription.RekazSubscriptionId,
+            Name: subscription.Name,
             Type: subscription.Type.ToString(),
             Status: subscription.Status,
             StartDate: subscription.StartDate,

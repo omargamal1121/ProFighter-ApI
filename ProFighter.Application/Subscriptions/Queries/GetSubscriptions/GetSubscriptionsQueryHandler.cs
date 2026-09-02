@@ -88,6 +88,7 @@ public class GetSubscriptionsQueryHandler : IRequestHandler<GetSubscriptionsQuer
             Id: s.Id,
             CustomerId: s.CustomerId,
             RekazSubscriptionId: s.RekazSubscriptionId,
+            Name: s.Name,
             Type: s.Type.ToString(),
             Status: s.Status,
             StartDate: s.StartDate,

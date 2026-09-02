@@ -88,6 +88,7 @@ public class GetCustomerSubscriptionsQueryHandler : IRequestHandler<GetCustomerS
         var subscriptionDtos = subscriptions.Select(s => new CustomerSubscriptionDto(
             Id: s.Id,
             RekazSubscriptionId: s.RekazSubscriptionId,
+            Name: s.Name,
             Type: s.Type,
             Status: s.Status,
             StartDate: s.StartDate,

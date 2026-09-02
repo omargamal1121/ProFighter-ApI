@@ -9,6 +9,7 @@ public class Subscription : BaseEntity
     public Guid RekazSubscriptionId { get; private set; }
     public Guid? RekazInvoiceId { get; private set; }
     public string? PaymentLink { get; private set; }
+    public string? Name { get; private set; }
     public SubscriptionType Type { get; private set; }
     public string Status { get; private set; }
     public DateTime StartDate { get; private set; }
@@ -26,7 +27,8 @@ public class Subscription : BaseEntity
         DateTime startDate,
         decimal price,
         Guid? rekazInvoiceId = null,
-        string? paymentLink = null) : base()
+        string? paymentLink = null,
+        string? name = null) : base()
     {
         if (price < 0)
             throw new ArgumentException("Price cannot be negative.", nameof(price));
@@ -40,6 +42,7 @@ public class Subscription : BaseEntity
         Price = price;
         RekazInvoiceId = rekazInvoiceId;
         PaymentLink = paymentLink;
+        Name = name;
         CreatedAt = DateTime.UtcNow;
     }
 
@@ -95,12 +98,22 @@ public class Subscription : BaseEntity
         MarkAsUpdated();
     }
 
-    public void SyncFromRekaz(string status, DateTime startDate, DateTime? endDate, decimal price)
+    public void SyncFromRekaz(string status, DateTime startDate, DateTime? endDate, decimal price, string? name = null)
     {
         Status = status;
         StartDate = startDate;
         EndDate = endDate;
         Price = price;
+        if (name != null)
+        {
+            Name = name;
+        }
+        MarkAsUpdated();
+    }
+
+    public void SetName(string? name)
+    {
+        Name = name;
         MarkAsUpdated();
     }
 

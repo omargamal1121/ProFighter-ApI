@@ -32,6 +32,16 @@ namespace ProFighter.API
 			builder.Services.AddEndpointsApiExplorer();
 			builder.Services.AddSwaggerGen();
 
+			builder.Services.AddCors(options =>
+			{
+				options.AddPolicy("AllowAll", policy =>
+				{
+					policy.AllowAnyOrigin()
+						  .AllowAnyHeader()
+						  .AllowAnyMethod();
+				});
+			});
+
 			builder.Services.AddApplication();
 			builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -59,7 +69,7 @@ namespace ProFighter.API
 						partition => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
 						{
 							AutoReplenishment = true,
-							PermitLimit = 5,
+							PermitLimit = 100,
 							QueueLimit = 0,
 							Window = TimeSpan.FromMinutes(1)
 						});
@@ -77,6 +87,8 @@ namespace ProFighter.API
 
 			app.UseHttpsRedirection();
 
+			app.UseCors("AllowAll");
+
 			// Order matters: Authentication before Authorization
 			app.UseAuthentication();
 			app.UseAuthorization();
@@ -92,6 +104,21 @@ namespace ProFighter.API
 				"SubscriptionExpiryReminderJob",
 				job => job.RunAsync(CancellationToken.None),
 				Cron.Daily);
+
+			// Automatically apply pending database migrations to the hosted database on startup
+			using (var scope = app.Services.CreateScope())
+			{
+				try
+				{
+					var db = scope.ServiceProvider.GetRequiredService<ProFighter.Infrastructure.Persistence.AppDbContext>();
+					Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.Migrate(db.Database);
+					Log.Information("Database migrations applied successfully.");
+				}
+				catch (Exception ex)
+				{
+					Log.Error(ex, "Failed to apply database migrations on startup.");
+				}
+			}
 
 			app.Run();
 		}

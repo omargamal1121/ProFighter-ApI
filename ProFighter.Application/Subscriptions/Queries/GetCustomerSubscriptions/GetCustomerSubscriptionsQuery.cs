@@ -19,6 +19,7 @@ public record GetCustomerSubscriptionsResult(List<CustomerSubscriptionDto> Subsc
 public record CustomerSubscriptionDto(
     Guid Id,
     Guid RekazSubscriptionId,
+    string? Name,
     SubscriptionType Type,
     string Status,
     DateTime StartDate,
