@@ -63,15 +63,16 @@ public sealed class IdentityService : IIdentityService
         var user = await _userManager.FindByIdAsync(userId.ToString())
             ?? throw new InvalidOperationException($"User {userId} not found.");
 
-        var remove = await _userManager.RemovePasswordAsync(user);
-        if (!remove.Succeeded)
-            throw new InvalidOperationException(
-                $"Failed to remove password: {string.Join("; ", remove.Errors.Select(e => e.Description))}");
+        var token= await _userManager.GeneratePasswordResetTokenAsync(user);
 
-        var add = await _userManager.AddPasswordAsync(user, newPassword);
-        if (!add.Succeeded)
+        var updated_pass = await _userManager.ResetPasswordAsync(user,token,newPassword);
+
+
+        if (!updated_pass.Succeeded)
             throw new InvalidOperationException(
-                $"Failed to set new password: {string.Join("; ", add.Errors.Select(e => e.Description))}");
+                $"Failed to reset password: {string.Join("; ", updated_pass.Errors.Select(e => e.Description))}");
+
+       
 
         _logger.LogInformation("ResetPasswordAsync — success for UserId: {UserId}", userId);
     }
