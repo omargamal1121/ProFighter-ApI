@@ -84,7 +84,7 @@ public class ImportCustomersFromRekazCommandHandler : IRequestHandler<ImportCust
                             customerDto.Name,
                             customerDto.MobileNumber,
                             customerDto.Email,
-                            cancellationToken
+                            ct: cancellationToken
                         );
 
                         imported++;

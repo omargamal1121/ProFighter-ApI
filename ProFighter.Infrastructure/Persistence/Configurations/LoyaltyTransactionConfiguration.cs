@@ -23,6 +23,10 @@ public class LoyaltyTransactionConfiguration : IEntityTypeConfiguration<LoyaltyT
         builder.Property(lt => lt.SourceReference)
             .HasMaxLength(250);
 
+        builder.Property(lt => lt.GymType)
+            .HasDefaultValue(Domain.Enums.GymType.ProFighter)
+            .IsRequired();
+
         // Foreign Key
         builder.HasOne<Customer>()
             .WithMany()

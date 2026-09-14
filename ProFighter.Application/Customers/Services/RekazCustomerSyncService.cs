@@ -39,7 +39,7 @@ public class RekazCustomerSyncService : IRekazCustomerSyncService
 
         var customer = await _provisioningService.ProvisionLocalCustomerAsync(
             rekazCustomer.Id, rekazCustomer.Name, rekazCustomer.MobileNumber, rekazCustomer.Email,
-            CustomerSource.LegacyRekazImport, ct);
+            CustomerSource.LegacyRekazImport, ct: ct);
 
         // ProvisionLocalCustomerAsync already adds the customer to the change tracker.
         // Returning the tracked (unsaved) entity.

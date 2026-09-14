@@ -1,4 +1,5 @@
 using ProFighter.Domain.Common;
+using ProFighter.Domain.Enums;
 
 namespace ProFighter.Domain.Entities;
 
@@ -7,6 +8,7 @@ public class DeviceToken : BaseEntity
     public Guid CustomerId { get; private set; }
     public string FcmToken { get; private set; }
     public DateTime LastUsedAt { get; private set; }
+    public GymType GymType { get; private set; } = GymType.ProFighter;
 
     // EF Core Constructor
     private DeviceToken() : base()
@@ -22,7 +24,7 @@ public class DeviceToken : BaseEntity
         return CustomerId;
     }
 
-    public DeviceToken(Guid id, Guid customerId, string fcmToken) : base()
+    public DeviceToken(Guid id, Guid customerId, string fcmToken, GymType gymType = GymType.ProFighter) : base()
     {
         if (string.IsNullOrWhiteSpace(fcmToken))
             throw new ArgumentException("FCM token cannot be empty.", nameof(fcmToken));
@@ -31,6 +33,7 @@ public class DeviceToken : BaseEntity
         CustomerId = customerId;
         FcmToken = fcmToken;
         LastUsedAt = DateTime.UtcNow;
+        GymType = gymType;
         CreatedAt = DateTime.UtcNow;
     }
 

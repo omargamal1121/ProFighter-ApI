@@ -15,6 +15,7 @@ public class Subscription : BaseEntity
     public DateTime StartDate { get; private set; }
     public DateTime? EndDate { get; private set; }
     public decimal Price { get; private set; }
+    public GymType GymType { get; private set; } = GymType.ProFighter;
 
     // EF Core Constructor
     private Subscription() : base() { }
@@ -28,7 +29,8 @@ public class Subscription : BaseEntity
         decimal price,
         Guid? rekazInvoiceId = null,
         string? paymentLink = null,
-        string? name = null) : base()
+        string? name = null,
+        GymType gymType = GymType.ProFighter) : base()
     {
         if (price < 0)
             throw new ArgumentException("Price cannot be negative.", nameof(price));
@@ -43,6 +45,7 @@ public class Subscription : BaseEntity
         RekazInvoiceId = rekazInvoiceId;
         PaymentLink = paymentLink;
         Name = name;
+        GymType = gymType;
         CreatedAt = DateTime.UtcNow;
     }
 

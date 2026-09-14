@@ -63,9 +63,12 @@ public sealed class CompleteAccountCommandHandler : IRequestHandler<CompleteAcco
         // Retrieve updated user data to get roles/claims for the token
         var identity = await _identityService.GetUserByIdAsync(request.UserId, cancellationToken);
 
+        var customer = await _context.Customers.FindAsync(new object[] { request.UserId }, cancellationToken);
+        var gymType = customer?.GymType ?? ProFighter.Domain.Enums.GymType.ProFighter;
+
         // Issue normal tokens
         var accessToken = await _tokenService.GenerateTokenAsync(
-            new TokenGenerationRequest(identity.UserId, identity.Roles, identity.Claims));
+            new TokenGenerationRequest(identity.UserId, identity.Roles, gymType, identity.Claims));
 
         var refreshToken = await _refreshTokenService.GenerateAndStoreAsync(
             identity.UserId,

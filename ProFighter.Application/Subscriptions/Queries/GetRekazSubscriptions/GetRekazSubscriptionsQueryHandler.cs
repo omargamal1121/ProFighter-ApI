@@ -9,11 +9,15 @@ namespace ProFighter.Application.Subscriptions.Queries.GetRekazSubscriptions;
 // Orchestrates: Fetches a list of subscriptions from Rekaz API using the provided query parameters.
 public class GetRekazSubscriptionsQueryHandler : IRequestHandler<GetRekazSubscriptionsQuery, RekazSubscriptionsListResult>
 {
-    private readonly IRekazSubscriptionsClient _rekazSubscriptionsClient;
+    private readonly IRekazClientFactory _clientFactory;
+    private readonly ICurrentGymContext _gymContext;
 
-    public GetRekazSubscriptionsQueryHandler(IRekazSubscriptionsClient rekazSubscriptionsClient)
+    public GetRekazSubscriptionsQueryHandler(
+        IRekazClientFactory clientFactory,
+        ICurrentGymContext gymContext)
     {
-        _rekazSubscriptionsClient = rekazSubscriptionsClient;
+        _clientFactory = clientFactory;
+        _gymContext = gymContext;
     }
 
     public async Task<RekazSubscriptionsListResult> Handle(GetRekazSubscriptionsQuery request, CancellationToken cancellationToken)
@@ -34,6 +38,7 @@ public class GetRekazSubscriptionsQueryHandler : IRequestHandler<GetRekazSubscri
             SkipCount: request.SkipCount
         );
 
-        return await _rekazSubscriptionsClient.GetSubscriptionsAsync(rekazQuery, cancellationToken);
+        var rekazClient = _clientFactory.GetClient(_gymContext.CurrentGymType);
+        return await rekazClient.Subscriptions.GetSubscriptionsAsync(rekazQuery, cancellationToken);
     }
 }

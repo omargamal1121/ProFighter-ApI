@@ -27,6 +27,10 @@ public class TrainerConfiguration : IEntityTypeConfiguration<Trainer>
         builder.Property(t => t.IsActive)
             .IsRequired();
 
+        builder.Property(t => t.GymType)
+            .HasDefaultValue(Domain.Enums.GymType.ProFighter)
+            .IsRequired();
+
         // Polymorphic relationship to Media (No database-level FK constraint enforced)
         builder.HasMany(t => t.Medias)
             .WithOne()

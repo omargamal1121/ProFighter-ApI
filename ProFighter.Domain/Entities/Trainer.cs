@@ -12,6 +12,7 @@ public class Trainer : BaseEntity
     public SubscriptionType Specialization { get; private set; }
     public bool IsActive { get; private set; }
     public IReadOnlyCollection<Media> Medias => _medias.AsReadOnly();
+    public GymType GymType { get; private set; } = GymType.ProFighter;
 
     // EF Core Constructor
     private Trainer() : base()
@@ -19,7 +20,7 @@ public class Trainer : BaseEntity
         Name = null!;
     }
 
-    public Trainer(Guid id, string name, SubscriptionType specialization, string? bio = null, bool isActive = true) : base()
+    public Trainer(Guid id, string name, SubscriptionType specialization, string? bio = null, bool isActive = true, GymType gymType = GymType.ProFighter) : base()
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Trainer name cannot be empty.", nameof(name));
@@ -29,6 +30,7 @@ public class Trainer : BaseEntity
         Specialization = specialization;
         Bio = bio;
         IsActive = isActive;
+        GymType = gymType;
         CreatedAt = DateTime.UtcNow;
     }
 

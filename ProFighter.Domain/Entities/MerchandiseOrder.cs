@@ -12,17 +12,19 @@ public class MerchandiseOrder : BaseEntity
     public MerchandiseOrderStatus Status { get; private set; }
     public IReadOnlyCollection<MerchandiseOrderItem> Items => _items.AsReadOnly();
     public decimal TotalAmount { get; private set; }
+    public GymType GymType { get; private set; } = GymType.ProFighter;
 
     // EF Core Constructor
     private MerchandiseOrder() : base() { }
 
-    public MerchandiseOrder(Guid id, Guid customerId, Guid rekazOrderId) : base()
+    public MerchandiseOrder(Guid id, Guid customerId, Guid rekazOrderId, GymType gymType = GymType.ProFighter) : base()
     {
         Id = id;
         CustomerId = customerId;
         RekazOrderId = rekazOrderId;
         Status = MerchandiseOrderStatus.Created;
         TotalAmount = 0;
+        GymType = gymType;
         CreatedAt = DateTime.UtcNow;
     }
 

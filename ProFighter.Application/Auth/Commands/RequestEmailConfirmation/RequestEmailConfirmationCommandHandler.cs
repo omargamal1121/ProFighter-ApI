@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using ProFighter.Application.Common.Extensions;
 using ProFighter.Application.Common.Interfaces;
 using System.Threading.Tasks;
 
@@ -10,21 +11,26 @@ public sealed class RequestEmailConfirmationCommandHandler : IRequestHandler<Req
 {
     private readonly IApplicationDbContext _context;
     private readonly IEmailConfirmationService _emailConfirmationService;
+    private readonly ICurrentGymContext _gymContext;
     private readonly ILogger<RequestEmailConfirmationCommandHandler> _logger;
 
     public RequestEmailConfirmationCommandHandler(
         IApplicationDbContext context,
         IEmailConfirmationService emailConfirmationService,
+        ICurrentGymContext gymContext,
         ILogger<RequestEmailConfirmationCommandHandler> logger)
     {
         _context = context;
         _emailConfirmationService = emailConfirmationService;
+        _gymContext = gymContext;
         _logger = logger;
     }
 
     public async Task<RequestEmailConfirmationResult> Handle(RequestEmailConfirmationCommand request, System.Threading.CancellationToken cancellationToken)
     {
-        var customer = await _context.Customers.FirstOrDefaultAsync(c => c.MobileNumber == request.MobileNumber, cancellationToken);
+        var customer = await _context.Customers
+            .ForCurrentGym(_gymContext)
+            .FirstOrDefaultAsync(c => c.MobileNumber == request.MobileNumber, cancellationToken);
 
         // Deliberately do NOT throw/reveal "customer not found" — return generic response
         // to avoid leaking which mobile numbers are registered (standard security practice)

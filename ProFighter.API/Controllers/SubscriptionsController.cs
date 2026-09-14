@@ -42,7 +42,7 @@ public class SubscriptionsController : BaseController
                 new ErrorResponse("Unauthorized", "User identity could not be resolved from the token."),
                 401));
 
-        var command = new CreateSubscriptionCommand(customerId.Value, (SubscriptionType)1, request.PriceId, request.Quantity);
+        var command = new CreateSubscriptionCommand(customerId.Value, request.PlanName, request.PriceId, request.Quantity);
         var result = await _mediator.Send(command, cancellationToken);
         return Ok(ApiResponse<CreateSubscriptionResult>.CreateSuccessResponse("Subscription created successfully.", result, 200));
     }
@@ -92,6 +92,8 @@ public class SubscriptionsController : BaseController
             "Subscriptions retrieved successfully.", result, 200));
     }
 
+    // ── Admin Endpoints (Commented out — user-facing endpoints only active) ──
+    /*
     /// <summary>
     /// Get subscriptions for a specific customer from the local database.
     /// This reads from the ProFighter database, not from Rekaz.
@@ -136,7 +138,6 @@ public class SubscriptionsController : BaseController
     /// Requires authentication.
     /// </summary>
     [HttpGet("all")]
- //   [Authorize]
     [ProducesResponseType(typeof(ApiResponse<GetSubscriptionsResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<GetSubscriptionsResult>>> GetSubscriptions(
@@ -195,6 +196,11 @@ public class SubscriptionsController : BaseController
             $"Hangfire Job ID: {jobId}",
             200));
     }
+    */
 }
 
-public record CreateSubscriptionRequest(Guid PriceId, int Quantity);
+/// <param name="PlanName">The plan name used to detect renewal (e.g. "Gold Monthly"). Must match the Rekaz plan name exactly.</param>
+/// <param name="PriceId">Rekaz price/product ID.</param>
+/// <param name="Quantity">Number of units.</param>
+public record CreateSubscriptionRequest(string PlanName, Guid PriceId, int Quantity);
+

@@ -21,6 +21,10 @@ public class MerchandiseOrderConfiguration : IEntityTypeConfiguration<Merchandis
             .HasPrecision(10, 2)
             .IsRequired();
 
+        builder.Property(o => o.GymType)
+            .HasDefaultValue(Domain.Enums.GymType.ProFighter)
+            .IsRequired();
+
         // Foreign Key
         builder.HasOne<Customer>()
             .WithMany()

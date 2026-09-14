@@ -35,6 +35,10 @@ public class SubscriptionConfiguration : IEntityTypeConfiguration<Subscription>
         builder.Property(s => s.StartDate)
             .IsRequired();
 
+        builder.Property(s => s.GymType)
+            .HasDefaultValue(Domain.Enums.GymType.ProFighter)
+            .IsRequired();
+
         // Foreign Key relationships
         builder.HasOne<Customer>()
             .WithMany()

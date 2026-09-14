@@ -14,4 +14,4 @@ public interface IAuthenticationService
     Task ConfirmEmailAsync(Guid userId, CancellationToken ct = default);
 }
 
-public record CredentialCheckResult(bool Succeeded, Guid? UserId, bool IsFirstLogin, IList<string> Roles);
+public record CredentialCheckResult(bool Succeeded, Guid? UserId, bool IsFirstLogin, IList<string> Roles, ProFighter.Domain.Enums.GymType GymType = ProFighter.Domain.Enums.GymType.ProFighter);

@@ -57,7 +57,7 @@ public class CreateCustomerByAdminCommandHandler : IRequestHandler<CreateCustome
 					request.Name,
 					request.MobileNumber,
 					request.Email,
-					ct
+					ct: ct
 				);
 				await _context.SaveChangesAsync(ct);
 				return id;

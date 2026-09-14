@@ -29,6 +29,19 @@ public static class DependencyInjection
         services.Configure<RekazWebhookOptions>(
             configuration.GetSection(RekazWebhookOptions.SectionName));
 
+        // ── Per-gym multi-tenant options ──────────────────────────────────────────
+        // Bound to the same "Rekaz" section.
+        // Keys must be set via environment variables or user-secrets, e.g.:
+        //   Rekaz__ProFighter__ApiKeyBase64   (never in appsettings.json)
+        //   Rekaz__ProFighter__TenantId
+        //   Rekaz__ProGym__ApiKeyBase64
+        //   Rekaz__ProGym__TenantId
+        services.Configure<RekazMultiGymOptions>(
+            configuration.GetSection(RekazOptions.SectionName));
+
+        // ── Existing named client (ProFighter key) — kept for backwards compat ────
+        // Used by webhook handlers, subscription creation, etc. that are still
+        // implicitly ProFighter-only.
         services.AddHttpClient("RekazClient", (sp, client) =>
         {
             var options = sp.GetRequiredService<IOptions<RekazOptions>>().Value;
@@ -41,6 +54,19 @@ public static class DependencyInjection
         services.AddHttpClient<IRekazCustomersClient, RekazCustomersClient>("RekazClient");
         services.AddHttpClient<IRekazSubscriptionsClient, RekazSubscriptionsClient>("RekazClient");
         services.AddHttpClient<IRekazTransactionsClient, RekazTransactionsClient>("RekazClient");
+
+        // ── Base client for factory (base URL only, no auth — factory stamps per-gym headers) ──
+        services.AddHttpClient("RekazClientBase", (sp, client) =>
+        {
+            var options = sp.GetRequiredService<IOptions<RekazOptions>>().Value;
+            client.BaseAddress = new Uri(options.BaseUrl);
+        });
+
+        // IRekazClientFactory — resolves gym-specific Rekaz clients at runtime.
+        services.AddScoped<IRekazClientFactory, RekazClientFactory>();
+
+        // IGymSettingsService — provides per-gym config (e.g. BranchId) to Application layer.
+        services.AddScoped<IGymSettingsService, GymSettingsService>();
 
         // MySQL DbContext & Identity
         var connectionString = configuration.GetConnectionString("DefaultConnection")

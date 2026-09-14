@@ -21,5 +21,9 @@ public class CustomerSyncFailureConfiguration : IEntityTypeConfiguration<Custome
         builder.Property(c => c.Status)
             .IsRequired()
             .HasMaxLength(50);
+
+        builder.Property(c => c.GymType)
+            .HasDefaultValue(Domain.Enums.GymType.ProFighter)
+            .IsRequired();
     }
 }

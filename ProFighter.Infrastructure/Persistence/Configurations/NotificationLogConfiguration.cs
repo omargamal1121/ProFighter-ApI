@@ -30,6 +30,10 @@ public class NotificationLogConfiguration : IEntityTypeConfiguration<Notificatio
             .HasMaxLength(50)
             .IsRequired();
 
+        builder.Property(n => n.GymType)
+            .HasDefaultValue(Domain.Enums.GymType.ProFighter)
+            .IsRequired();
+
         // Foreign Key
         builder.HasOne<Customer>()
             .WithMany()

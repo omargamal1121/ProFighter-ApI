@@ -9,15 +9,20 @@ namespace ProFighter.Application.Subscriptions.Queries.GetRekazSubscriptionById;
 // Orchestrates: Fetches a single subscription by ID from Rekaz API.
 public class GetRekazSubscriptionByIdQueryHandler : IRequestHandler<GetRekazSubscriptionByIdQuery, RekazSubscriptionResult?>
 {
-    private readonly IRekazSubscriptionsClient _rekazSubscriptionsClient;
+    private readonly IRekazClientFactory _clientFactory;
+    private readonly ICurrentGymContext _gymContext;
 
-    public GetRekazSubscriptionByIdQueryHandler(IRekazSubscriptionsClient rekazSubscriptionsClient)
+    public GetRekazSubscriptionByIdQueryHandler(
+        IRekazClientFactory clientFactory,
+        ICurrentGymContext gymContext)
     {
-        _rekazSubscriptionsClient = rekazSubscriptionsClient;
+        _clientFactory = clientFactory;
+        _gymContext = gymContext;
     }
 
     public async Task<RekazSubscriptionResult?> Handle(GetRekazSubscriptionByIdQuery request, CancellationToken cancellationToken)
     {
-        return await _rekazSubscriptionsClient.GetSubscriptionByIdAsync(request.Id, cancellationToken);
+        var rekazClient = _clientFactory.GetClient(_gymContext.CurrentGymType);
+        return await rekazClient.Subscriptions.GetSubscriptionByIdAsync(request.Id, cancellationToken);
     }
 }

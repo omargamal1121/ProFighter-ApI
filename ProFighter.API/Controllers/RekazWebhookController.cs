@@ -30,12 +30,39 @@ public class RekazWebhookController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>
+    /// Webhook receiver endpoint for ProFighter.
+    /// URL: POST /webhooks/rekaz/{path}
+    /// </summary>
     [HttpPost("{path}")]
     public async Task<IActionResult> Receive(string path, CancellationToken ct)
     {
         if (path != _webhookOptions.ReceiverPath)
             return NotFound(); // plain 404 — don't reveal whether the path is "close"
 
+        return await ProcessWebhookRequestAsync("ProFighter", ct);
+    }
+
+    /// <summary>
+    /// Webhook receiver endpoint for ProGym.
+    /// URL: POST /webhooks/rekaz/progym/{path} (or /webhooks/progym/{path})
+    /// </summary>
+    [HttpPost("progym/{path}")]
+    [HttpPost("/webhooks/progym/{path}")]
+    public async Task<IActionResult> ReceiveProGym(string path, CancellationToken ct)
+    {
+        var expectedPath = !string.IsNullOrWhiteSpace(_webhookOptions.ProGymReceiverPath)
+            ? _webhookOptions.ProGymReceiverPath
+            : _webhookOptions.ReceiverPath;
+
+        if (path != expectedPath)
+            return NotFound(); // plain 404
+
+        return await ProcessWebhookRequestAsync("ProGym", ct);
+    }
+
+    private async Task<IActionResult> ProcessWebhookRequestAsync(string gymSource, CancellationToken ct)
+    {
         string rawBody;
         using (var reader = new StreamReader(Request.Body))
         {
@@ -66,7 +93,6 @@ public class RekazWebhookController : ControllerBase
 
         var eventName = eventNameProp.GetString()!;
 
-       
         var alreadyExists = await _context.RekazWebhookInboxEntries.AnyAsync(w => w.Id == eventId, ct);
         if (!alreadyExists)
         {
@@ -76,9 +102,9 @@ public class RekazWebhookController : ControllerBase
 
             BackgroundJob.Enqueue<IRekazWebhookProcessor>(p => p.ProcessAsync(eventId, CancellationToken.None));
         }
-     _logger.LogInformation("Rekaz webhook received: {EventName} ({EventId})", eventName, eventId);
 
-        return Ok(); // any 2xx counts as success per Rekaz's delivery contract; queue real
-                     // processing and acknowledge fast, per their docs.
+        _logger.LogInformation("Rekaz webhook [{GymSource}] received: {EventName} ({EventId})", gymSource, eventName, eventId);
+
+        return Ok(); // acknowledge delivery fast per Rekaz delivery contract
     }
 }

@@ -12,6 +12,7 @@ public class Customer : BaseEntity
     public CustomerSource Source { get; private set; }
     public int LoyaltyPointsBalance { get; private set; }
     public bool IsFirstLogin { get; private set; } = true;
+    public GymType GymType { get; private set; } = GymType.ProFighter;
 
 
 
@@ -27,7 +28,7 @@ public class Customer : BaseEntity
 
 	}
 
-	public Customer(Guid id, string name, string mobileNumber, CustomerSource source, string? email = null, Guid? rekazCustomerId = null, bool isFirstLogin = true) : base()
+	public Customer(Guid id, string name, string mobileNumber, CustomerSource source, string? email = null, Guid? rekazCustomerId = null, bool isFirstLogin = true, GymType gymType = GymType.ProFighter) : base()
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Name cannot be empty.", nameof(name));
@@ -44,11 +45,12 @@ public class Customer : BaseEntity
         RekazCustomerId = rekazCustomerId;
         LoyaltyPointsBalance = 0;
         IsFirstLogin = isFirstLogin;
+        GymType = gymType;
         CreatedAt = DateTime.UtcNow;
     }
 
     // Constructor for self-registration (email) - never requires first login
-    public Customer(Guid id, string name, string mobileNumber, string? email, Guid? rekazCustomerId) : base()
+    public Customer(Guid id, string name, string mobileNumber, string? email, Guid? rekazCustomerId, GymType gymType = GymType.ProFighter) : base()
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Name cannot be empty.", nameof(name));
@@ -63,6 +65,7 @@ public class Customer : BaseEntity
         RekazCustomerId = rekazCustomerId;
         LoyaltyPointsBalance = 0;
         IsFirstLogin = false; // Self-registered users set their own password
+        GymType = gymType;
         CreatedAt = DateTime.UtcNow;
     }
 

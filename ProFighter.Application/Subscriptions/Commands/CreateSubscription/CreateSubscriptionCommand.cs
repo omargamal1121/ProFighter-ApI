@@ -1,12 +1,11 @@
 using MediatR;
-using ProFighter.Domain.Enums;
 
 namespace ProFighter.Application.Subscriptions.Commands.CreateSubscription;
 
 public record CreateSubscriptionCommand(
-    Guid CustomerId,      // our local Customer.Id
-    SubscriptionType Type,
-    Guid PriceId,          // Rekaz priceId for the chosen plan
+    Guid CustomerId,
+    string PlanName,   // Plan name used to detect renewal (replaces Type filter)
+    Guid PriceId,
     int Quantity
 ) : IRequest<CreateSubscriptionResult>;
 

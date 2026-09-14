@@ -11,26 +11,36 @@ public class AuthenticationService : IAuthenticationService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IApplicationDbContext _context;
     private readonly ILogger<AuthenticationService> _logger;
+    private readonly ICurrentGymContext _gymContext;
 
     public AuthenticationService(
         UserManager<ApplicationUser> userManager,
         IApplicationDbContext context,
-        ILogger<AuthenticationService> logger)
+        ILogger<AuthenticationService> logger,
+        ICurrentGymContext gymContext)
     {
         _userManager = userManager;
         _context = context;
         _logger = logger;
+        _gymContext = gymContext;
     }
 
     public async Task<CredentialCheckResult> ValidateCredentialsAsync(string mobileNumber, string password, CancellationToken ct = default)
     {
-        var normalizedUserName = mobileNumber.StartsWith("+")
-            ? mobileNumber.Substring(1)
-            : mobileNumber;
+        var gymType = _gymContext.CurrentGymType;
 
-        var user = await _userManager.FindByNameAsync(normalizedUserName);
+        var customer = await _context.Customers
+            .FirstOrDefaultAsync(c => c.MobileNumber == mobileNumber && c.GymType == gymType, ct);
+
+        if (customer == null)
+        {
+            return new CredentialCheckResult(false, null, false, new List<string>());
+        }
+
+        var user = await _userManager.FindByIdAsync(customer.Id.ToString());
         if (user == null)
         {
+            _logger.LogWarning("Identity user not found for Customer {CustomerId}", customer.Id);
             return new CredentialCheckResult(false, null, false, new List<string>());
         }
 
@@ -40,15 +50,8 @@ public class AuthenticationService : IAuthenticationService
             return new CredentialCheckResult(false, null, false, new List<string>());
         }
 
-        var customer = await _context.Customers.FirstOrDefaultAsync(c => c.Id == user.Id, ct);
-        if (customer == null)
-        {
-            _logger.LogWarning("Customer not found for ApplicationUser {UserId}", user.Id);
-            return new CredentialCheckResult(false, null, false, new List<string>());
-        }
-
         var roles = await _userManager.GetRolesAsync(user);
-        return new CredentialCheckResult(true, user.Id, customer.IsFirstLogin, roles.ToList());
+        return new CredentialCheckResult(true, user.Id, customer.IsFirstLogin, roles.ToList(), customer.GymType);
     }
 
     public async Task SetPasswordAndEmailAsync(Guid userId, string newPassword, string email, CancellationToken ct = default)

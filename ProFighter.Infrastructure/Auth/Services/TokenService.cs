@@ -57,6 +57,7 @@ public sealed class TokenService : ITokenService
         {
             new(JwtRegisteredClaimNames.Jti, jti),
             new(ClaimTypes.NameIdentifier, request.UserId.ToString()),
+            new("GymType", ((int)request.GymType).ToString()),
             new(JwtRegisteredClaimNames.Iat,
                 DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(),
                 ClaimValueTypes.Integer64)

@@ -9,11 +9,15 @@ namespace ProFighter.Application.Products.Queries.GetRekazProducts;
 // Orchestrates: Fetches products from Rekaz API using the provided query parameters.
 public class GetRekazProductsQueryHandler : IRequestHandler<GetRekazProductsQuery, RekazProductsResult>
 {
-    private readonly IRekazProductsClient _rekazProductsClient;
+    private readonly IRekazClientFactory _clientFactory;
+    private readonly ICurrentGymContext _gymContext;
 
-    public GetRekazProductsQueryHandler(IRekazProductsClient rekazProductsClient)
+    public GetRekazProductsQueryHandler(
+        IRekazClientFactory clientFactory,
+        ICurrentGymContext gymContext)
     {
-        _rekazProductsClient = rekazProductsClient;
+        _clientFactory = clientFactory;
+        _gymContext = gymContext;
     }
 
     public async Task<RekazProductsResult> Handle(GetRekazProductsQuery request, CancellationToken cancellationToken)
@@ -27,6 +31,7 @@ public class GetRekazProductsQueryHandler : IRequestHandler<GetRekazProductsQuer
             Sorting: request.Sorting
         );
 
-        return await _rekazProductsClient.GetProductsAsync(rekazQuery, cancellationToken);
+        var rekazClient = _clientFactory.GetClient(_gymContext.CurrentGymType);
+        return await rekazClient.Products.GetProductsAsync(rekazQuery, cancellationToken);
     }
 }

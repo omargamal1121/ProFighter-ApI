@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using ProFighter.Application.Common.Extensions;
 using ProFighter.Application.Common.Interfaces;
 using ProFighter.Application.Common.Interfaces.Auth;
 using ProFighter.Application.Common.Models.Auth;
@@ -17,6 +18,7 @@ public sealed class CompleteFirstLoginCommandHandler : IRequestHandler<CompleteF
     private readonly IApplicationDbContext _context;
     private readonly ITokenService _tokenService;
     private readonly IEmailConfirmationService _emailConfirmationService;
+    private readonly ICurrentGymContext _gymContext;
     private readonly ILogger<CompleteFirstLoginCommandHandler> _logger;
 
     public CompleteFirstLoginCommandHandler(
@@ -26,6 +28,7 @@ public sealed class CompleteFirstLoginCommandHandler : IRequestHandler<CompleteF
         IApplicationDbContext context,
         ITokenService tokenService,
         IEmailConfirmationService emailConfirmationService,
+        ICurrentGymContext gymContext,
         ILogger<CompleteFirstLoginCommandHandler> logger)
     {
         _firstLoginTokenService = firstLoginTokenService;
@@ -34,6 +37,7 @@ public sealed class CompleteFirstLoginCommandHandler : IRequestHandler<CompleteF
         _context = context;
         _tokenService = tokenService;
         _emailConfirmationService = emailConfirmationService;
+        _gymContext = gymContext;
         _logger = logger;
     }
 
@@ -43,7 +47,9 @@ public sealed class CompleteFirstLoginCommandHandler : IRequestHandler<CompleteF
         if (mobileNumber is null)
             throw new UnauthorizedAccessException("Invalid or expired setup token. Please log in again.");
 
-        var customer = await _context.Customers.FirstOrDefaultAsync(c => c.MobileNumber == mobileNumber, cancellationToken)
+        var customer = await _context.Customers
+            .ForCurrentGym(_gymContext)
+            .FirstOrDefaultAsync(c => c.MobileNumber == mobileNumber, cancellationToken)
             ?? throw new InvalidOperationException($"No customer found for mobile number associated with this token.");
 
         var normalizedEmail = request.Email?.Trim().ToLowerInvariant();
@@ -93,7 +99,7 @@ public sealed class CompleteFirstLoginCommandHandler : IRequestHandler<CompleteF
 
         var roles = await _authenticationService.GetRolesAsync(customer.Id, cancellationToken);
         var jwt = await _tokenService.GenerateTokenAsync(
-            new TokenGenerationRequest(customer.Id, roles.ToList()));
+            new TokenGenerationRequest(customer.Id, roles.ToList(), customer.GymType));
 
         _logger.LogInformation("First login completed successfully for customer {CustomerId}", customer.Id);
         return new CompleteFirstLoginResult(jwt);

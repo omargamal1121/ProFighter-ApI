@@ -10,6 +10,7 @@ public class NotificationLog : BaseEntity
     public string Body { get; private set; }
     public NotificationChannel Channel { get; private set; }
     public NotificationStatus Status { get; private set; }
+    public GymType GymType { get; private set; } = GymType.ProFighter;
 
     // EF Core Constructor
     private NotificationLog() : base()
@@ -24,7 +25,8 @@ public class NotificationLog : BaseEntity
         string title,
         string body,
         NotificationChannel channel,
-        NotificationStatus status) : base()
+        NotificationStatus status,
+        GymType gymType = GymType.ProFighter) : base()
     {
         if (string.IsNullOrWhiteSpace(title))
             throw new ArgumentException("Title cannot be empty.", nameof(title));
@@ -37,6 +39,7 @@ public class NotificationLog : BaseEntity
         Body = body;
         Channel = channel;
         Status = status;
+        GymType = gymType;
         CreatedAt = DateTime.UtcNow;
     }
 

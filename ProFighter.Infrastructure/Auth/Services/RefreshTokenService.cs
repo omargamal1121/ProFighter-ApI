@@ -144,9 +144,12 @@ public sealed class RefreshTokenService : IRefreshTokenService
         record.RevokedAt = DateTime.UtcNow;
         _context.RefreshTokens.Update(record);
 
+        var customer = await _context.Customers.FindAsync(new object[] { user.Id });
+        var gymType = customer?.GymType ?? ProFighter.Domain.Enums.GymType.ProFighter;
+
         var roles         = (await _userManager.GetRolesAsync(user)).ToList();
         var claims        = (await _userManager.GetClaimsAsync(user)).ToList();
-        var accessToken   = await _tokenService.GenerateTokenAsync(new TokenGenerationRequest(user.Id, roles, claims));
+        var accessToken   = await _tokenService.GenerateTokenAsync(new TokenGenerationRequest(user.Id, roles, gymType, claims));
         var newRefreshToken = await GenerateAndStoreAsync(user.Id, user.SecurityStamp ?? string.Empty, reuseExisting: false);
 
         _logger.LogInformation("RotateAsync — rotation successful. UserId: {UserId}", user.Id);

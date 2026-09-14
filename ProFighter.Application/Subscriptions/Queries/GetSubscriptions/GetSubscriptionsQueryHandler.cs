@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using ProFighter.Application.Common.Extensions;
 using ProFighter.Application.Common.Interfaces;
 using ProFighter.Application.Subscriptions.Common;
 using ProFighter.Domain.Entities;
@@ -11,19 +12,24 @@ namespace ProFighter.Application.Subscriptions.Queries.GetSubscriptions;
 public class GetSubscriptionsQueryHandler : IRequestHandler<GetSubscriptionsQuery, GetSubscriptionsResult>
 {
     private readonly IApplicationDbContext _context;
+    private readonly ICurrentGymContext _gymContext;
     private readonly ILogger<GetSubscriptionsQueryHandler> _logger;
 
     public GetSubscriptionsQueryHandler(
         IApplicationDbContext context,
+        ICurrentGymContext gymContext,
         ILogger<GetSubscriptionsQueryHandler> logger)
     {
         _context = context;
+        _gymContext = gymContext;
         _logger = logger;
     }
 
     public async Task<GetSubscriptionsResult> Handle(GetSubscriptionsQuery request, CancellationToken ct)
     {
-        var query = _context.Subscriptions.AsQueryable();
+        var query = _context.Subscriptions
+            .AsQueryable()
+            .ForCurrentGym(_gymContext);
 
         // Apply customer filter if provided
         if (request.CustomerId.HasValue)

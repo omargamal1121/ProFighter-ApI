@@ -23,6 +23,10 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(p => p.StockQuantity)
             .IsRequired();
 
+        builder.Property(p => p.GymType)
+            .HasDefaultValue(Domain.Enums.GymType.ProFighter)
+            .IsRequired();
+
         // Polymorphic relationship to Media (No database-level FK constraint enforced)
         builder.HasMany(p => p.Medias)
             .WithOne()

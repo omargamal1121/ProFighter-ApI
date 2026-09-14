@@ -45,6 +45,9 @@ namespace ProFighter.API
 			builder.Services.AddApplication();
 			builder.Services.AddInfrastructure(builder.Configuration);
 
+			builder.Services.AddHttpContextAccessor();
+			builder.Services.AddScoped<ProFighter.Application.Common.Interfaces.ICurrentGymContext, ProFighter.API.Services.CurrentGymContext>();
+
 			// Configure Data Protection to persist keys to a durable file system location
 			builder.Services.AddDataProtection()
 				.PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "keys")))
@@ -92,6 +95,7 @@ namespace ProFighter.API
 			// Order matters: Authentication before Authorization
 			app.UseAuthentication();
 			app.UseAuthorization();
+			app.UseMiddleware<GymTypeValidationMiddleware>();
 			app.UseRateLimiter();
 
 			// Hangfire Dashboard (requires authentication in production)
@@ -105,7 +109,34 @@ namespace ProFighter.API
 				job => job.RunAsync(CancellationToken.None),
 				Cron.Daily);
 
-			// Automatically apply pending database migrations to the hosted database on startup
+			
+			var egyptTz = TimeZoneInfo.FindSystemTimeZoneById("Egypt Standard Time");
+
+			RecurringJob.AddOrUpdate<ProFighter.Application.Sync.Jobs.GymDataSyncJob>(
+				"gym-sync-profighter-customers",
+				job => job.SyncProFighterCustomersAsync(CancellationToken.None),
+				"0 2 * * *",
+				new RecurringJobOptions { TimeZone = egyptTz });
+
+			RecurringJob.AddOrUpdate<ProFighter.Application.Sync.Jobs.GymDataSyncJob>(
+				"gym-sync-profighter-subscriptions",
+				job => job.SyncProFighterSubscriptionsAsync(CancellationToken.None),
+				"30 2 * * *",
+				new RecurringJobOptions { TimeZone = egyptTz });
+
+			RecurringJob.AddOrUpdate<ProFighter.Application.Sync.Jobs.GymDataSyncJob>(
+				"gym-sync-progym-customers",
+				job => job.SyncProGymCustomersAsync(CancellationToken.None),
+				"0 3 * * *",
+				new RecurringJobOptions { TimeZone = egyptTz });
+
+			RecurringJob.AddOrUpdate<ProFighter.Application.Sync.Jobs.GymDataSyncJob>(
+				"gym-sync-progym-subscriptions",
+				job => job.SyncProGymSubscriptionsAsync(CancellationToken.None),
+				"30 3 * * *",
+				new RecurringJobOptions { TimeZone = egyptTz });
+
+			
 			using (var scope = app.Services.CreateScope())
 			{
 				try

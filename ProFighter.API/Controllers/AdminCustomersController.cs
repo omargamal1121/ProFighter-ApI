@@ -7,6 +7,8 @@ using ProFighter.Application.Customers.Commands.ImportCustomersFromRekaz;
 
 namespace ProFighter.API.Controllers;
 
+// ── Admin Endpoints (Commented out — user-facing endpoints only active) ──
+/*
 [Route("api/admin/customers")]
 public class AdminCustomersController : BaseController
 {
@@ -55,3 +57,4 @@ public class AdminCustomersController : BaseController
             StatusCodes.Status200OK));
     }
 }
+*/

@@ -42,7 +42,7 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, LoginRes
         }
 
         var jwt = await _tokenService.GenerateTokenAsync(
-            new TokenGenerationRequest(check.UserId!.Value, check.Roles.ToList()));
+            new TokenGenerationRequest(check.UserId!.Value, check.Roles.ToList(), check.GymType));
         _logger.LogInformation("Login successful for user {UserId}", check.UserId);
         return new LoginResult(RequiresFirstLoginSetup: false, FirstLoginToken: null, JwtToken: jwt);
     }

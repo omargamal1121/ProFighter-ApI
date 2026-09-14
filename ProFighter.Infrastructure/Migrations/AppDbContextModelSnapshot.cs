@@ -140,6 +140,11 @@ namespace ProFighter.Infrastructure.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("varchar(150)");
 
+                    b.Property<int>("GymType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<bool>("IsFirstLogin")
                         .HasColumnType("tinyint(1)");
 
@@ -169,17 +174,17 @@ namespace ProFighter.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Email")
-                        .IsUnique()
-                        .HasFilter("`Email` IS NOT NULL AND `DeletedAt` IS NULL");
-
-                    b.HasIndex("MobileNumber")
-                        .IsUnique()
-                        .HasFilter("`DeletedAt` IS NULL");
-
                     b.HasIndex("RekazCustomerId")
                         .IsUnique()
                         .HasFilter("`RekazCustomerId` IS NOT NULL AND `DeletedAt` IS NULL");
+
+                    b.HasIndex("Email", "GymType")
+                        .IsUnique()
+                        .HasFilter("`Email` IS NOT NULL AND `DeletedAt` IS NULL");
+
+                    b.HasIndex("MobileNumber", "GymType")
+                        .IsUnique()
+                        .HasFilter("`DeletedAt` IS NULL");
 
                     b.ToTable("Customers", (string)null);
                 });
@@ -198,6 +203,11 @@ namespace ProFighter.Infrastructure.Migrations
                     b.Property<string>("ErrorMessage")
                         .IsRequired()
                         .HasColumnType("longtext");
+
+                    b.Property<int>("GymType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<string>("PayloadJson")
                         .IsRequired()
@@ -238,6 +248,11 @@ namespace ProFighter.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)");
 
+                    b.Property<int>("GymType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<DateTime>("LastUsedAt")
                         .HasColumnType("datetime(6)");
 
@@ -264,6 +279,11 @@ namespace ProFighter.Infrastructure.Migrations
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<int>("GymType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<Guid?>("RecipientCustomerId")
                         .HasColumnType("char(36)");
@@ -346,6 +366,11 @@ namespace ProFighter.Infrastructure.Migrations
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<int>("GymType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<int>("Points")
                         .HasColumnType("int");
@@ -441,6 +466,11 @@ namespace ProFighter.Infrastructure.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<int>("GymType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<Guid>("RekazOrderId")
                         .HasColumnType("char(36)");
 
@@ -487,6 +517,11 @@ namespace ProFighter.Infrastructure.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<int>("GymType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -517,6 +552,11 @@ namespace ProFighter.Infrastructure.Migrations
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<int>("GymType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -637,6 +677,11 @@ namespace ProFighter.Infrastructure.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<int>("GymType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<decimal>("Price")
                         .HasPrecision(10, 2)
                         .HasColumnType("decimal(10,2)");
@@ -686,6 +731,11 @@ namespace ProFighter.Infrastructure.Migrations
 
                     b.Property<DateTime?>("EndDate")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<int>("GymType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<string>("Name")
                         .HasMaxLength(100)
@@ -755,6 +805,11 @@ namespace ProFighter.Infrastructure.Migrations
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<int>("GymType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("tinyint(1)");

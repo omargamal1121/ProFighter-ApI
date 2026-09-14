@@ -19,6 +19,10 @@ public class DeviceTokenConfiguration : IEntityTypeConfiguration<DeviceToken>
         builder.Property(d => d.LastUsedAt)
             .IsRequired();
 
+        builder.Property(d => d.GymType)
+            .HasDefaultValue(Domain.Enums.GymType.ProFighter)
+            .IsRequired();
+
         // Foreign Key
         builder.HasOne<Customer>()
             .WithMany()

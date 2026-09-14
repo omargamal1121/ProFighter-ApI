@@ -24,6 +24,10 @@ public class ReservationConfiguration : IEntityTypeConfiguration<Reservation>
         builder.Property(r => r.ScheduledAt)
             .IsRequired();
 
+        builder.Property(r => r.GymType)
+            .HasDefaultValue(Domain.Enums.GymType.ProFighter)
+            .IsRequired();
+
         // OwnsOne for OrderSnapshot Value Object
         builder.OwnsOne(r => r.Order, order =>
         {

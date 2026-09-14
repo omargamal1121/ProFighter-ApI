@@ -28,19 +28,25 @@ public class CustomerProvisioningService : ICustomerProvisioningService
         string name,
         string mobileNumber,
         string? email,
+        GymType gymType = GymType.ProFighter,
         CancellationToken ct = default)
     {
-        var normalizedUserName = mobileNumber.StartsWith("+") 
-            ? mobileNumber.Substring(1) 
-            : mobileNumber;
+        var generatedUserName = GenerateIdentityUsername(mobileNumber, rekazCustomerId, gymType);
+        var user = await _userManager.FindByNameAsync(generatedUserName);
 
-        var user = await _userManager.FindByNameAsync(normalizedUserName);
+        if (user == null)
+        {
+            // Fallback for existing legacy users
+            var oldUserName = mobileNumber.StartsWith("+") ? mobileNumber.Substring(1) : mobileNumber;
+            user = await _userManager.FindByNameAsync(oldUserName);
+        }
+
         if (user == null)
         {
             var defaultPassword = _configuration["Identity:DefaultLegacyPassword"] 
                 ?? throw new InvalidOperationException("Default legacy password 'Identity:DefaultLegacyPassword' is not configured.");
 
-            user = await CreateIdentityUserAsync(normalizedUserName, mobileNumber, email, defaultPassword, mustChangePassword: true, ct);
+            user = await CreateIdentityUserAsync(generatedUserName, mobileNumber, email, defaultPassword, mustChangePassword: true, ct);
         }
 
         var customerExists = await _context.Customers.AnyAsync(c => c.Id == user.Id, ct);
@@ -57,19 +63,34 @@ public class CustomerProvisioningService : ICustomerProvisioningService
 
     public async Task<Guid> ProvisionLocalCustomerWithPasswordAsync(
         Guid rekazCustomerId, string name, string mobileNumber, string? email,
-        string password, CustomerSource source, CancellationToken ct = default)
+        string password, CustomerSource source, GymType gymType = GymType.ProFighter, CancellationToken ct = default)
     {
-        var normalizedUserName = mobileNumber.StartsWith("+")
-            ? mobileNumber.Substring(1)
-            : mobileNumber;
+        var generatedUserName = GenerateIdentityUsername(mobileNumber, rekazCustomerId, gymType);
+        var user = await _userManager.FindByNameAsync(generatedUserName);
 
-        var user = await _userManager.FindByNameAsync(normalizedUserName);
+        if (user == null)
+        {
+            var oldUserName = mobileNumber.StartsWith("+") ? mobileNumber.Substring(1) : mobileNumber;
+            user = await _userManager.FindByNameAsync(oldUserName);
+        }
+
         if (user != null)
         {
             throw new InvalidOperationException($"User with mobile number {mobileNumber} already exists.");
         }
 
-        user = await CreateIdentityUserAsync(normalizedUserName, mobileNumber, email, password, mustChangePassword: false, ct);
+        try
+        {
+            user = await CreateIdentityUserAsync(generatedUserName, mobileNumber, email, password, mustChangePassword: false, ct);
+        }
+        catch (DbUpdateException ex) when (IsDuplicateUserNameError(ex))
+        {
+            throw new InvalidOperationException($"User with mobile number {mobileNumber} already exists.", ex);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("already taken") || ex.Message.Contains("DuplicateUserName"))
+        {
+            throw new InvalidOperationException($"User with mobile number {mobileNumber} already exists.", ex);
+        }
 
         var customer = new Customer(user.Id, name, mobileNumber, email, rekazCustomerId); // EmailRegistration users set their own password, so no first login required
         _context.Customers.Add(customer);
@@ -79,13 +100,17 @@ public class CustomerProvisioningService : ICustomerProvisioningService
 
     public async Task<Customer> ProvisionLocalCustomerAsync(
         Guid rekazCustomerId, string name, string mobileNumber, string? email,
-        CustomerSource source, CancellationToken ct = default)
+        CustomerSource source, GymType gymType = GymType.ProFighter, CancellationToken ct = default)
     {
-        var normalizedUserName = mobileNumber.StartsWith("+")
-            ? mobileNumber.Substring(1)
-            : mobileNumber;
+        var generatedUserName = GenerateIdentityUsername(mobileNumber, rekazCustomerId, gymType);
+        var user = await _userManager.FindByNameAsync(generatedUserName);
 
-        var user = await _userManager.FindByNameAsync(normalizedUserName);
+        if (user == null)
+        {
+            var oldUserName = mobileNumber.StartsWith("+") ? mobileNumber.Substring(1) : mobileNumber;
+            user = await _userManager.FindByNameAsync(oldUserName);
+        }
+
         if (user == null)
         {
             try
@@ -93,13 +118,13 @@ public class CustomerProvisioningService : ICustomerProvisioningService
                 var defaultPassword = _configuration["Identity:DefaultLegacyPassword"]
                     ?? throw new InvalidOperationException("Default legacy password 'Identity:DefaultLegacyPassword' is not configured.");
 
-                user = await CreateIdentityUserAsync(normalizedUserName, mobileNumber, email, defaultPassword, mustChangePassword: true, ct);
+                user = await CreateIdentityUserAsync(generatedUserName, mobileNumber, email, defaultPassword, mustChangePassword: true, ct);
             }
             catch (DbUpdateException ex) when (IsDuplicateUserNameError(ex))
             {
-                user = await _userManager.FindByNameAsync(normalizedUserName)
+                user = await _userManager.FindByNameAsync(generatedUserName)
                     ?? throw new InvalidOperationException(
-                        $"Duplicate username conflict for {normalizedUserName}, but user not found on re-lookup.", ex);
+                        $"Duplicate username conflict for {generatedUserName}, but user not found on re-lookup.", ex);
             }
         }
 
@@ -109,7 +134,7 @@ public class CustomerProvisioningService : ICustomerProvisioningService
             return existingCustomer;
         }
 
-        var customer = new Customer(user.Id, name, mobileNumber, source, email, rekazCustomerId, isFirstLogin: true);
+        var customer = new Customer(user.Id, name, mobileNumber, source, email, rekazCustomerId, isFirstLogin: true, gymType: gymType);
         _context.Customers.Add(customer);
 
         return customer;
@@ -122,6 +147,22 @@ public class CustomerProvisioningService : ICustomerProvisioningService
             return mySqlEx.Number == 1062;
         }
         return false;
+    }
+
+    private string SanitizeMobileNumberForUsername(string mobileNumber)
+    {
+        if (string.IsNullOrWhiteSpace(mobileNumber)) return string.Empty;
+        return new string(mobileNumber.Where(char.IsDigit).ToArray());
+    }
+
+    private string GenerateIdentityUsername(string mobileNumber, Guid rekazCustomerId, GymType gymType)
+    {
+        var sanitized = SanitizeMobileNumberForUsername(mobileNumber);
+        var baseUserName = string.IsNullOrWhiteSpace(sanitized) 
+            ? $"customer_{rekazCustomerId:N}" 
+            : sanitized;
+
+        return $"{baseUserName}_{(int)gymType}";
     }
 
     private async Task<ApplicationUser> CreateIdentityUserAsync(

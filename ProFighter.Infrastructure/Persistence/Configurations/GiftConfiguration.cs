@@ -21,6 +21,10 @@ public class GiftConfiguration : IEntityTypeConfiguration<Gift>
             .HasPrecision(10, 2)
             .IsRequired();
 
+        builder.Property(g => g.GymType)
+            .HasDefaultValue(Domain.Enums.GymType.ProFighter)
+            .IsRequired();
+
         // Foreign Key
         builder.HasOne<Customer>()
             .WithMany()

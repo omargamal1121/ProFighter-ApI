@@ -13,6 +13,7 @@ public class Reservation : BaseEntity
     public DateTime ScheduledAt { get; private set; }
     public decimal Price { get; private set; }
     public OrderSnapshot Order { get; private set; }
+    public GymType GymType { get; private set; } = GymType.ProFighter;
 
     // EF Core Constructor
     private Reservation() : base()
@@ -27,7 +28,8 @@ public class Reservation : BaseEntity
         DateTime scheduledAt,
         decimal price,
         OrderSnapshot order,
-        Guid? subscriptionId = null) : base()
+        Guid? subscriptionId = null,
+        GymType gymType = GymType.ProFighter) : base()
     {
         if (price < 0)
             throw new ArgumentException("Price cannot be negative.", nameof(price));
@@ -40,6 +42,7 @@ public class Reservation : BaseEntity
         Order = order ?? throw new ArgumentNullException(nameof(order));
         SubscriptionId = subscriptionId;
         Status = ReservationStatus.Pending;
+        GymType = gymType;
         CreatedAt = DateTime.UtcNow;
     }
 

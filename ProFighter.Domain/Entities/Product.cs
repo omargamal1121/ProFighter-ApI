@@ -1,4 +1,5 @@
 using ProFighter.Domain.Common;
+using ProFighter.Domain.Enums;
 
 namespace ProFighter.Domain.Entities;
 
@@ -10,6 +11,7 @@ public class Product : BaseEntity
     public decimal Price { get; private set; }
     public int StockQuantity { get; private set; }
     public IReadOnlyCollection<Media> Medias => _medias.AsReadOnly();
+    public GymType GymType { get; private set; } = GymType.ProFighter;
 
     // EF Core Constructor
     private Product() : base()
@@ -17,7 +19,7 @@ public class Product : BaseEntity
         Name = null!;
     }
 
-    public Product(Guid id, string name, decimal price, int stockQuantity) : base()
+    public Product(Guid id, string name, decimal price, int stockQuantity, GymType gymType = GymType.ProFighter) : base()
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Product name cannot be empty.", nameof(name));
@@ -30,6 +32,7 @@ public class Product : BaseEntity
         Name = name;
         Price = price;
         StockQuantity = stockQuantity;
+        GymType = gymType;
         CreatedAt = DateTime.UtcNow;
     }
 

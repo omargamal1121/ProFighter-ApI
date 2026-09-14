@@ -8,15 +8,12 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 {
     public void Configure(EntityTypeBuilder<Customer> builder)
     {
-        // Apply BaseEntity configuration (Id, ValueGeneratedNever, CreatedAt, soft delete filter)
+       
         builder.ConfigureBaseEntity();
 
         builder.ToTable("Customers");
 
-        // SHARED PRIMARY KEY PATTERN:
-        // The Customer.Id property acts as both the primary key and the foreign key referencing the Identity ApplicationUser.Id.
-        // EF Core mapping for this 1:1 relationship is established without introducing a separate ApplicationUserId column.
-
+       
         builder.Property(c => c.Name)
             .IsRequired()
             .HasMaxLength(150);
@@ -36,17 +33,22 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.Property(c => c.LoyaltyPointsBalance)
             .IsRequired();
 
-        // Unique filtered index for MobileNumber (soft-delete awareness)
-        builder.HasIndex(c => c.MobileNumber)
+        builder.Property(c => c.GymType)
+            .HasDefaultValue(Domain.Enums.GymType.ProFighter)
+            .IsRequired();
+
+       
+        builder.HasIndex(c => new { c.MobileNumber, c.GymType })
             .IsUnique()
             .HasFilter("`DeletedAt` IS NULL");
 
-        // Unique filtered indexes for nullable properties and soft-delete awareness
+        
         builder.HasIndex(c => c.RekazCustomerId)
             .IsUnique()
             .HasFilter("`RekazCustomerId` IS NOT NULL AND `DeletedAt` IS NULL");
 
-        builder.HasIndex(c => c.Email)
+      
+        builder.HasIndex(c => new { c.Email, c.GymType })
             .IsUnique()
             .HasFilter("`Email` IS NOT NULL AND `DeletedAt` IS NULL");
     }

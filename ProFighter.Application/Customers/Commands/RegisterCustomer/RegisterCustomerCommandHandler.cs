@@ -47,7 +47,7 @@ public class RegisterCustomerCommandHandler : IRequestHandler<RegisterCustomerCo
             {
                 var id = await _provisioningService.ProvisionLocalCustomerWithPasswordAsync(
                     rekazCustomerId, request.Name, request.MobileNumber, request.Email,
-                    request.Password, CustomerSource.EmailRegistration, innerCt);
+                    request.Password, CustomerSource.EmailRegistration, ct: innerCt);
                 await _context.SaveChangesAsync(innerCt);
                 return id;
             }, ct);

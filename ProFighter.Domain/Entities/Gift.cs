@@ -9,11 +9,12 @@ public class Gift : BaseEntity
     public Guid? RecipientCustomerId { get; private set; }
     public GiftStatus Status { get; private set; }
     public decimal Value { get; private set; }
+    public GymType GymType { get; private set; } = GymType.ProFighter;
 
     // EF Core Constructor
     private Gift() : base() { }
 
-    public Gift(Guid id, Guid rekazGiftId, decimal value, Guid? recipientCustomerId = null) : base()
+    public Gift(Guid id, Guid rekazGiftId, decimal value, Guid? recipientCustomerId = null, GymType gymType = GymType.ProFighter) : base()
     {
         if (value < 0)
             throw new ArgumentException("Value cannot be negative.", nameof(value));
@@ -23,6 +24,7 @@ public class Gift : BaseEntity
         Value = value;
         RecipientCustomerId = recipientCustomerId;
         Status = GiftStatus.Created;
+        GymType = gymType;
         CreatedAt = DateTime.UtcNow;
     }
 

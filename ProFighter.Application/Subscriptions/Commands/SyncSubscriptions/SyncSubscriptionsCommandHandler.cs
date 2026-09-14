@@ -39,6 +39,7 @@ public class SyncSubscriptionsCommandHandler : IRequestHandler<SyncSubscriptions
         var created = 0;
         var updated = 0;
         var skipped = 0;
+        var errors = 0;
 
         _logger.LogInformation("Starting subscription synchronization from Rekaz");
 
@@ -67,10 +68,10 @@ public class SyncSubscriptionsCommandHandler : IRequestHandler<SyncSubscriptions
 
                 foreach (var rekazSubscription in rekazResult.Items)
                 {
+                    totalProcessed++;
                     try
                     {
                         var result = await SyncSingleSubscriptionAsync(rekazSubscription, ct);
-                        totalProcessed++;
 
                         if (result == SyncResult.Created)
                             created++;
@@ -81,8 +82,8 @@ public class SyncSubscriptionsCommandHandler : IRequestHandler<SyncSubscriptions
                     }
                     catch (Exception ex)
                     {
+                        errors++;
                         _logger.LogError(ex, "Failed to sync subscription {SubscriptionId}", rekazSubscription.Id);
-                        skipped++;
                     }
                 }
 
@@ -91,8 +92,6 @@ public class SyncSubscriptionsCommandHandler : IRequestHandler<SyncSubscriptions
                 // Break if we've processed all available items
                 if (rekazResult.Items.Count < maxResultCount)
                 {
-                    _logger.LogInformation("Completed subscription synchronization. Total: {Total}, Created: {Created}, Updated: {Updated}, Skipped: {Skipped}",
-                        totalProcessed, created, updated, skipped);
                     break;
                 }
             }
@@ -103,7 +102,10 @@ public class SyncSubscriptionsCommandHandler : IRequestHandler<SyncSubscriptions
             throw;
         }
 
-        return new SyncSubscriptionsResult(totalProcessed, created, updated, skipped);
+        _logger.LogInformation("Completed subscription synchronization. Total: {Total}, Created: {Created}, Updated: {Updated}, Skipped: {Skipped}, Errors: {Errors}",
+            totalProcessed, created, updated, skipped, errors);
+
+        return new SyncSubscriptionsResult(totalProcessed, created, updated, skipped, errors);
     }
 
     private async Task<SyncResult> SyncSingleSubscriptionAsync(RekazSubscriptionResult rekazSubscription, CancellationToken ct)
@@ -125,7 +127,7 @@ public class SyncSubscriptionsCommandHandler : IRequestHandler<SyncSubscriptions
 
             customer = await _provisioningService.ProvisionLocalCustomerAsync(
                 rekazCustomer.Id, rekazCustomer.Name, rekazCustomer.MobileNumber, rekazCustomer.Email,
-                CustomerSource.LegacyRekazImport, ct);
+                CustomerSource.LegacyRekazImport, ct: ct);
         }
 
       

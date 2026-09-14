@@ -9,6 +9,7 @@ public class LoyaltyTransaction : BaseEntity
     public int Points { get; private set; }
     public LoyaltyTransactionType Type { get; private set; }
     public string? SourceReference { get; private set; }
+    public GymType GymType { get; private set; } = GymType.ProFighter;
 
     // EF Core Constructor
     private LoyaltyTransaction() : base() { }
@@ -18,13 +19,15 @@ public class LoyaltyTransaction : BaseEntity
         Guid customerId,
         int points,
         LoyaltyTransactionType type,
-        string? sourceReference = null) : base()
+        string? sourceReference = null,
+        GymType gymType = GymType.ProFighter) : base()
     {
         Id = id;
         CustomerId = customerId;
         Points = points;
         Type = type;
         SourceReference = sourceReference;
+        GymType = gymType;
         CreatedAt = DateTime.UtcNow;
     }
 }

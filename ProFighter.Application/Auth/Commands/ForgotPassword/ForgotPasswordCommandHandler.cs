@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using ProFighter.Application.Common.Extensions;
 using ProFighter.Application.Common.Interfaces;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,23 +13,28 @@ public sealed class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswor
     private readonly IApplicationDbContext _context;
     private readonly IAuthenticationService _authenticationService;
     private readonly IPasswordResetService _passwordResetService;
+    private readonly ICurrentGymContext _gymContext;
     private readonly ILogger<ForgotPasswordCommandHandler> _logger;
 
     public ForgotPasswordCommandHandler(
         IApplicationDbContext context,
         IAuthenticationService authenticationService,
         IPasswordResetService passwordResetService,
+        ICurrentGymContext gymContext,
         ILogger<ForgotPasswordCommandHandler> logger)
     {
         _context = context;
         _authenticationService = authenticationService;
         _passwordResetService = passwordResetService;
+        _gymContext = gymContext;
         _logger = logger;
     }
 
     public async Task<ForgotPasswordResult> Handle(ForgotPasswordCommand request, CancellationToken ct)
     {
-        var customer = await _context.Customers.FirstOrDefaultAsync(c => c.MobileNumber == request.MobileNumber, ct);
+        var customer = await _context.Customers
+            .ForCurrentGym(_gymContext)
+            .FirstOrDefaultAsync(c => c.MobileNumber == request.MobileNumber, ct);
 
         // Deliberately do NOT throw/reveal "customer not found" — return the same
         // NoEmailOnFile-shaped response to avoid leaking which mobile numbers are registered

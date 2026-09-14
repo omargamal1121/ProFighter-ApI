@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using ProFighter.Application.Common.Extensions;
 using ProFighter.Application.Common.Interfaces;
 using ProFighter.Domain.Entities;
 using ProFighter.Domain.Enums;
@@ -10,20 +11,25 @@ namespace ProFighter.Application.Subscriptions.Queries.GetCustomerSubscriptions;
 public class GetCustomerSubscriptionsQueryHandler : IRequestHandler<GetCustomerSubscriptionsQuery, GetCustomerSubscriptionsResult>
 {
     private readonly IApplicationDbContext _context;
+    private readonly ICurrentGymContext _gymContext;
     private readonly ILogger<GetCustomerSubscriptionsQueryHandler> _logger;
 
     public GetCustomerSubscriptionsQueryHandler(
         IApplicationDbContext context,
+        ICurrentGymContext gymContext,
         ILogger<GetCustomerSubscriptionsQueryHandler> logger)
     {
         _context = context;
+        _gymContext = gymContext;
         _logger = logger;
     }
 
     public async Task<GetCustomerSubscriptionsResult> Handle(GetCustomerSubscriptionsQuery request, CancellationToken ct)
     {
+        var gymType = _gymContext.CurrentGymType;
+
         var customer = await _context.Customers
-            .FirstOrDefaultAsync(c => c.Id == request.CustomerId, ct);
+            .FirstOrDefaultAsync(c => c.Id == request.CustomerId && c.GymType == gymType, ct);
 
         if (customer is null)
         {
@@ -32,7 +38,8 @@ public class GetCustomerSubscriptionsQueryHandler : IRequestHandler<GetCustomerS
         }
 
         var query = _context.Subscriptions
-            .Where(s => s.CustomerId == request.CustomerId);
+            .Where(s => s.CustomerId == request.CustomerId)
+            .ForCurrentGym(_gymContext);
 
         // Apply filters
         if (!string.IsNullOrEmpty(request.Status))

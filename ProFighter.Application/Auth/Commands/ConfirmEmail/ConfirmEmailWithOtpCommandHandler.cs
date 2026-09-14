@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using ProFighter.Application.Common.Extensions;
 using ProFighter.Application.Common.Interfaces;
 using System.Threading.Tasks;
 
@@ -11,23 +12,28 @@ public sealed class ConfirmEmailWithOtpCommandHandler : IRequestHandler<ConfirmE
     private readonly IApplicationDbContext _context;
     private readonly IAuthenticationService _authenticationService;
     private readonly IEmailConfirmationOtpService _otpService;
+    private readonly ICurrentGymContext _gymContext;
     private readonly ILogger<ConfirmEmailWithOtpCommandHandler> _logger;
 
     public ConfirmEmailWithOtpCommandHandler(
         IApplicationDbContext context,
         IAuthenticationService authenticationService,
         IEmailConfirmationOtpService otpService,
+        ICurrentGymContext gymContext,
         ILogger<ConfirmEmailWithOtpCommandHandler> logger)
     {
         _context = context;
         _authenticationService = authenticationService;
         _otpService = otpService;
+        _gymContext = gymContext;
         _logger = logger;
     }
 
     public async Task<ConfirmEmailWithOtpResult> Handle(ConfirmEmailWithOtpCommand request, System.Threading.CancellationToken cancellationToken)
     {
-        var customer = await _context.Customers.FirstOrDefaultAsync(c => c.MobileNumber == request.MobileNumber, cancellationToken);
+        var customer = await _context.Customers
+            .ForCurrentGym(_gymContext)
+            .FirstOrDefaultAsync(c => c.MobileNumber == request.MobileNumber, cancellationToken);
 
         if (customer is null)
         {

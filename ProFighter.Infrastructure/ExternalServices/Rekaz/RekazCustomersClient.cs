@@ -31,11 +31,6 @@ public sealed class RekazCustomersClient : IRekazCustomersClient
         _logger = logger;
     }
 
-    // -------------------------------------------------------------------------
-    // CreateCustomerAsync
-    // -------------------------------------------------------------------------
-
-    /// <inheritdoc/>
     public async Task<Guid> CreateCustomerAsync(
         CreateRekazCustomerRequest request,
         CancellationToken ct = default)

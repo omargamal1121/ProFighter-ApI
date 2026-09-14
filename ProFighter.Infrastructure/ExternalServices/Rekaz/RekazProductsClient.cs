@@ -20,16 +20,13 @@ public sealed class RekazProductsClient : IRekazProductsClient
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly HttpClient _httpClient;
-    private readonly RekazOptions _options;
     private readonly ILogger<RekazProductsClient> _logger;
 
     public RekazProductsClient(
         HttpClient httpClient,
-        IOptions<RekazOptions> options,
         ILogger<RekazProductsClient> logger)
     {
         _httpClient = httpClient;
-        _options = options.Value;
         _logger = logger;
     }
 

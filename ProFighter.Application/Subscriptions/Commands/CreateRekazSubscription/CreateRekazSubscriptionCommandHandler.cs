@@ -9,15 +9,20 @@ namespace ProFighter.Application.Subscriptions.Commands.CreateRekazSubscription;
 // Orchestrates: Creates a subscription in Rekaz API.
 public class CreateRekazSubscriptionCommandHandler : IRequestHandler<CreateRekazSubscriptionCommand, RekazSubscriptionCreatedResult>
 {
-    private readonly IRekazSubscriptionsClient _rekazSubscriptionsClient;
+    private readonly IRekazClientFactory _clientFactory;
+    private readonly ICurrentGymContext _gymContext;
 
-    public CreateRekazSubscriptionCommandHandler(IRekazSubscriptionsClient rekazSubscriptionsClient)
+    public CreateRekazSubscriptionCommandHandler(
+        IRekazClientFactory clientFactory,
+        ICurrentGymContext gymContext)
     {
-        _rekazSubscriptionsClient = rekazSubscriptionsClient;
+        _clientFactory = clientFactory;
+        _gymContext = gymContext;
     }
 
     public async Task<RekazSubscriptionCreatedResult> Handle(CreateRekazSubscriptionCommand request, CancellationToken cancellationToken)
     {
-        return await _rekazSubscriptionsClient.CreateSubscriptionAsync(request.Request, cancellationToken);
+        var rekazClient = _clientFactory.GetClient(_gymContext.CurrentGymType);
+        return await rekazClient.Subscriptions.CreateSubscriptionAsync(request.Request, cancellationToken);
     }
 }
