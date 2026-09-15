@@ -45,9 +45,19 @@ public static class DependencyInjection
         services.AddHttpClient("RekazClient", (sp, client) =>
         {
             var options = sp.GetRequiredService<IOptions<RekazOptions>>().Value;
-            client.BaseAddress = new Uri(options.BaseUrl);
-            client.DefaultRequestHeaders.Add("Authorization", $"Basic {options.ApiKeyBase64}");
-            client.DefaultRequestHeaders.Add("__tenant", options.TenantId);
+            var multiOptions = sp.GetRequiredService<IOptions<RekazMultiGymOptions>>().Value;
+            var apiKey = !string.IsNullOrWhiteSpace(options.ApiKeyBase64)
+                ? options.ApiKeyBase64
+                : multiOptions.ProFighter?.ApiKeyBase64;
+            var tenantId = !string.IsNullOrWhiteSpace(options.TenantId)
+                ? options.TenantId
+                : multiOptions.ProFighter?.TenantId;
+
+            client.BaseAddress = new Uri(options.BaseUrl ?? multiOptions.BaseUrl);
+            if (!string.IsNullOrWhiteSpace(apiKey))
+                client.DefaultRequestHeaders.Add("Authorization", $"Basic {apiKey}");
+            if (!string.IsNullOrWhiteSpace(tenantId))
+                client.DefaultRequestHeaders.Add("__tenant", tenantId);
         });
 
         services.AddHttpClient<IRekazProductsClient, RekazProductsClient>("RekazClient");

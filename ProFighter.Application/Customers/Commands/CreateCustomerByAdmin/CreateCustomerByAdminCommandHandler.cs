@@ -13,7 +13,8 @@ namespace ProFighter.Application.Customers.Commands.CreateCustomerByAdmin;
 // Orchestrates: Rekaz creation first, then local persistence in a transaction, with failure-recovery logging on local sync failure
 public class CreateCustomerByAdminCommandHandler : IRequestHandler<CreateCustomerByAdminCommand, CreateCustomerByAdminResult>
 {
-	private readonly IRekazCustomersClient _rekazCustomersClient;
+	private readonly IRekazClientFactory _rekazClientFactory;
+	private readonly ICurrentGymContext _gymContext;
 	private readonly ICustomerProvisioningService _provisioningService;
 	private readonly INotificationEmailService _emailService;
 	private readonly IUnitOfWork _unitOfWork;
@@ -21,14 +22,16 @@ public class CreateCustomerByAdminCommandHandler : IRequestHandler<CreateCustome
 	private readonly ILogger<CreateCustomerByAdminCommandHandler> _logger;
 
 	public CreateCustomerByAdminCommandHandler(
-		IRekazCustomersClient rekazCustomersClient,
+		IRekazClientFactory rekazClientFactory,
+		ICurrentGymContext gymContext,
 		ICustomerProvisioningService provisioningService,
 		INotificationEmailService emailService,
 		IUnitOfWork unitOfWork,
 		IApplicationDbContext context,
 		ILogger<CreateCustomerByAdminCommandHandler> logger)
 	{
-		_rekazCustomersClient = rekazCustomersClient;
+		_rekazClientFactory = rekazClientFactory;
+		_gymContext = gymContext;
 		_provisioningService = provisioningService;
 		_emailService = emailService;
 		_unitOfWork = unitOfWork;
@@ -44,8 +47,8 @@ public class CreateCustomerByAdminCommandHandler : IRequestHandler<CreateCustome
 			Email: request.Email
 		);
 
-		
-		var rekazCustomerId = await _rekazCustomersClient.CreateCustomerAsync(createRequest, cancellationToken);
+		var rekazClient = _rekazClientFactory.GetClient(_gymContext.CurrentGymType);
+		var rekazCustomerId = await rekazClient.Customers.CreateCustomerAsync(createRequest, cancellationToken);
 
 	
 		try

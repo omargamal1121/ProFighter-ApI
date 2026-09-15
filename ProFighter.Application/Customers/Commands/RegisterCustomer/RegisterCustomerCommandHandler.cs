@@ -12,7 +12,8 @@ namespace ProFighter.Application.Customers.Commands.RegisterCustomer;
 // Customer, shared primary key) in a transaction, then best-effort email confirmation.
 public class RegisterCustomerCommandHandler : IRequestHandler<RegisterCustomerCommand, RegisterCustomerResult>
 {
-    private readonly IRekazCustomersClient _rekazCustomersClient;
+    private readonly IRekazClientFactory _rekazClientFactory;
+    private readonly ICurrentGymContext _gymContext;
     private readonly ICustomerProvisioningService _provisioningService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IApplicationDbContext _context;
@@ -20,14 +21,16 @@ public class RegisterCustomerCommandHandler : IRequestHandler<RegisterCustomerCo
     private readonly ILogger<RegisterCustomerCommandHandler> _logger;
 
     public RegisterCustomerCommandHandler(
-        IRekazCustomersClient rekazCustomersClient,
+        IRekazClientFactory rekazClientFactory,
+        ICurrentGymContext gymContext,
         ICustomerProvisioningService provisioningService,
         IUnitOfWork unitOfWork,
         IApplicationDbContext context,
         IEmailConfirmationService emailConfirmationService,
         ILogger<RegisterCustomerCommandHandler> logger)
     {
-        _rekazCustomersClient = rekazCustomersClient;
+        _rekazClientFactory = rekazClientFactory;
+        _gymContext = gymContext;
         _provisioningService = provisioningService;
         _unitOfWork = unitOfWork;
         _context = context;
@@ -37,7 +40,8 @@ public class RegisterCustomerCommandHandler : IRequestHandler<RegisterCustomerCo
 
     public async Task<RegisterCustomerResult> Handle(RegisterCustomerCommand request, CancellationToken ct)
     {
-        var rekazCustomerId = await _rekazCustomersClient.CreateCustomerAsync(
+        var rekazClient = _rekazClientFactory.GetClient(_gymContext.CurrentGymType);
+        var rekazCustomerId = await rekazClient.Customers.CreateCustomerAsync(
             new CreateRekazCustomerRequest(request.Name, request.MobileNumber, request.Email), ct);
 
         Guid customerId;
