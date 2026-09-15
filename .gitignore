@@ -126,5 +126,8 @@ keys/
 # Seed files
 seed.json
 *seed*.json
-**/Seed/*.json
+**/Seed/
+**/Seed/*
+*Seeder*
+
 
