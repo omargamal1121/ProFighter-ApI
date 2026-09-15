@@ -13,7 +13,6 @@ public class Media : BaseEntity
     public MediaPurpose Purpose { get; private set; }
     public int DisplayOrder { get; private set; }
 
-    // EF Core Constructor
     private Media() : base()
     {
         CloudinaryUrl = null!;

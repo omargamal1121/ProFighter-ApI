@@ -166,6 +166,19 @@ public static class DependencyInjection
         services.AddScoped<IRekazTransactionEventHandler, RekazTransactionEventHandler>();
         services.AddScoped<IRekazWebhookProcessor, ProFighter.Application.Subscriptions.Services.RekazWebhookProcessor>();
 
+        // Cloudinary Image Storage
+        services.Configure<ExternalServices.Cloudinary.CloudinarySettings>(
+            configuration.GetSection(ExternalServices.Cloudinary.CloudinarySettings.SectionName));
+
+        services.AddSingleton(sp =>
+        {
+            var options = sp.GetRequiredService<IOptions<ExternalServices.Cloudinary.CloudinarySettings>>().Value;
+            var account = new CloudinaryDotNet.Account(options.CloudName, options.ApiKey, options.ApiSecret);
+            return new CloudinaryDotNet.Cloudinary(account);
+        });
+
+        services.AddScoped<IImageService, ExternalServices.Cloudinary.CloudinaryImageService>();
+
         return services;
     }
 }

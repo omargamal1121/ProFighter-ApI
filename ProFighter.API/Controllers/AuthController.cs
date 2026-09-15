@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ProFighter.Application.Auth.Commands.AdminLogin;
 using ProFighter.Application.Auth.Commands.CompleteAccount;
 using ProFighter.Application.Auth.Commands.CompleteFirstLogin;
 using ProFighter.Application.Auth.Commands.ConfirmEmail;
@@ -40,6 +41,23 @@ public sealed class AuthController : BaseController
     {
         var result = await _mediator.Send(command, cancellationToken);
         return Ok(ApiResponse<LoginResult>.CreateSuccessResponse("Login successful.", result, 200));
+    }
+
+    /// <summary>
+    /// Admin login with mobile number and password.
+    /// Verifies Admin role. Returns a first-login setup token when IsFirstLogin is true,
+    /// or normal JWT token otherwise.
+    /// </summary>
+    [HttpPost("admin/login")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(ApiResponse<LoginResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<ApiResponse<LoginResult>>> AdminLogin(
+        [FromBody] AdminLoginCommand command,
+        CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(command, cancellationToken);
+        return Ok(ApiResponse<LoginResult>.CreateSuccessResponse("Admin login successful.", result, 200));
     }
 
     /// <summary>

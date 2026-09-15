@@ -7,6 +7,7 @@ namespace ProFighter.Application.Common.Interfaces;
 public interface IAuthenticationService
 {
     Task<CredentialCheckResult> ValidateCredentialsAsync(string mobileNumber, string password, CancellationToken ct = default);
+    Task<CredentialCheckResult> ValidateAdminCredentialsAsync(string mobileNumber, string password, CancellationToken ct = default);
     Task SetPasswordAndEmailAsync(Guid userId, string newPassword, string email, CancellationToken ct = default);
     Task<IList<string>> GetRolesAsync(Guid userId, CancellationToken ct = default);
     Task<bool> IsEmailConfirmedAsync(Guid userId, CancellationToken ct = default);

@@ -10,7 +10,7 @@ namespace ProFighter.API
 {
 	public class Program
 	{
-		public static void Main(string[] args)
+		public static async Task Main(string[] args)
 		{
 			var builder = WebApplication.CreateBuilder(args);
 
@@ -144,6 +144,8 @@ namespace ProFighter.API
 					var db = scope.ServiceProvider.GetRequiredService<ProFighter.Infrastructure.Persistence.AppDbContext>();
 					Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.Migrate(db.Database);
 					Log.Information("Database migrations applied successfully.");
+
+					await ProFighter.Infrastructure.Persistence.Seed.DbSeeder.SeedAdminUserAsync(scope.ServiceProvider);
 				}
 				catch (Exception ex)
 				{

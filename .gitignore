@@ -122,3 +122,9 @@ node_modules/
 
 # Data Protection Keys
 keys/
+
+# Seed files
+seed.json
+*seed*.json
+**/Seed/*.json
+

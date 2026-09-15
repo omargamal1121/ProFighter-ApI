@@ -54,6 +54,38 @@ public class AuthenticationService : IAuthenticationService
         return new CredentialCheckResult(true, user.Id, customer.IsFirstLogin, roles.ToList(), customer.GymType);
     }
 
+    public async Task<CredentialCheckResult> ValidateAdminCredentialsAsync(string mobileNumber, string password, CancellationToken ct = default)
+    {
+        var gymType = _gymContext.CurrentGymType;
+
+        var customer = await _context.Customers
+            .FirstOrDefaultAsync(c => c.MobileNumber == mobileNumber && c.GymType == gymType, ct)
+            ?? await _context.Customers
+            .FirstOrDefaultAsync(c => c.MobileNumber == mobileNumber, ct);
+
+        if (customer == null)
+        {
+            return new CredentialCheckResult(false, null, false, new List<string>());
+        }
+
+        var user = await _userManager.FindByIdAsync(customer.Id.ToString());
+        if (user == null)
+        {
+            _logger.LogWarning("Identity user not found for Admin Customer {CustomerId}", customer.Id);
+            return new CredentialCheckResult(false, null, false, new List<string>());
+        }
+
+        var passwordValid = await _userManager.CheckPasswordAsync(user, password);
+        if (!passwordValid)
+        {
+            return new CredentialCheckResult(false, null, false, new List<string>());
+        }
+
+        var roles = await _userManager.GetRolesAsync(user);
+        return new CredentialCheckResult(true, user.Id, customer.IsFirstLogin, roles.ToList(), customer.GymType);
+    }
+
+
     public async Task SetPasswordAndEmailAsync(Guid userId, string newPassword, string email, CancellationToken ct = default)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());

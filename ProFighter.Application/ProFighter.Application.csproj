@@ -7,6 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Gives access to IFormFile and other ASP.NET Core HTTP types without SDK.Web -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="MediatR" Version="12.2.0" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.9.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.2" />

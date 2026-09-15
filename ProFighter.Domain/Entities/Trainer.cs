@@ -34,7 +34,7 @@ public class Trainer : BaseEntity
         CreatedAt = DateTime.UtcNow;
     }
 
-    public void UpdateProfile(string name, SubscriptionType specialization, string? bio)
+    public void UpdateProfile(string name, SubscriptionType specialization, string? bio, GymType? gymType = null, bool? isActive = null)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Trainer name cannot be empty.", nameof(name));
@@ -42,6 +42,20 @@ public class Trainer : BaseEntity
         Name = name;
         Specialization = specialization;
         Bio = bio;
+        if (gymType.HasValue) GymType = gymType.Value;
+        if (isActive.HasValue) IsActive = isActive.Value;
+        MarkAsUpdated();
+    }
+
+    public void AddMedia(Media media)
+    {
+        _medias.Add(media);
+        MarkAsUpdated();
+    }
+
+    public void RemoveMedia(Media media)
+    {
+        _medias.Remove(media);
         MarkAsUpdated();
     }
 
