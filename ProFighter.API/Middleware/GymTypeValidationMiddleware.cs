@@ -17,17 +17,20 @@ public class GymTypeValidationMiddleware
     }
 
     public async Task InvokeAsync(HttpContext context)
-
     {
-		if (context.Request.Path.StartsWithSegments("/hangfire") ||
-	   context.Request.Path.StartsWithSegments("/swagger") ||
-	   context.Request.Path.StartsWithSegments("/health") ||
-	   context.Request.Path.StartsWithSegments("/webhooks"))
-		{
-			await _next(context);
-			return;
-		}
-		var headerExists = context.Request.Headers.TryGetValue("X-Gym-Type", out var headerValue);
+        if (context.Request.Path.StartsWithSegments("/hangfire") ||
+            context.Request.Path.StartsWithSegments("/swagger") ||
+            context.Request.Path.StartsWithSegments("/health") ||
+            context.Request.Path.StartsWithSegments("/webhooks") ||
+            context.Request.Path.StartsWithSegments("/api/auth/admin") ||
+            context.Request.Path.StartsWithSegments("/api/admin") ||
+            context.User.IsInRole("Admin"))
+        {
+            await _next(context);
+            return;
+        }
+
+        var headerExists = context.Request.Headers.TryGetValue("X-Gym-Type", out var headerValue);
 
         if (context.User.Identity?.IsAuthenticated == true)
         {

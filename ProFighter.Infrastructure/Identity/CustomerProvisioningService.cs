@@ -130,7 +130,7 @@ public class CustomerProvisioningService : ICustomerProvisioningService
             }
             catch (DbUpdateException ex) when (IsDuplicateUserNameError(ex))
             {
-                user = await _userManager.FindByNameAsync(generatedUserName)
+                user = await FindByNameWithRetryAsync(generatedUserName, ct)
                     ?? throw new InvalidOperationException(
                         $"Duplicate username conflict for {generatedUserName}, but user not found on re-lookup.", ex);
             }
@@ -155,6 +155,22 @@ public class CustomerProvisioningService : ICustomerProvisioningService
             return mySqlEx.Number == 1062;
         }
         return false;
+    }
+
+    private async Task<ApplicationUser?> FindByNameWithRetryAsync(string userName, CancellationToken ct)
+    {
+        int[] delays = [50, 100, 200];
+        foreach (var delay in delays)
+        {
+            await Task.Delay(delay, ct);
+            var user = await _userManager.FindByNameAsync(userName);
+            if (user != null)
+            {
+                return user;
+            }
+        }
+
+        return null;
     }
 
     private string SanitizeMobileNumberForUsername(string mobileNumber)

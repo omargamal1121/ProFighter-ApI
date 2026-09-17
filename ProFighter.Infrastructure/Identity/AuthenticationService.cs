@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ProFighter.Application.Common.Interfaces;
 using ProFighter.Domain.Entities;
+using ProFighter.Domain.Enums;
 
 namespace ProFighter.Infrastructure.Identity;
 
@@ -56,22 +57,31 @@ public class AuthenticationService : IAuthenticationService
 
     public async Task<CredentialCheckResult> ValidateAdminCredentialsAsync(string mobileNumber, string password, CancellationToken ct = default)
     {
-        var gymType = _gymContext.CurrentGymType;
+        var sanitizedMobile = new string(mobileNumber.Where(char.IsDigit).ToArray());
 
         var customer = await _context.Customers
-            .FirstOrDefaultAsync(c => c.MobileNumber == mobileNumber && c.GymType == gymType, ct)
-            ?? await _context.Customers
-            .FirstOrDefaultAsync(c => c.MobileNumber == mobileNumber, ct);
+            .FirstOrDefaultAsync(c => c.MobileNumber == mobileNumber || c.MobileNumber == sanitizedMobile, ct);
 
-        if (customer == null)
+        ApplicationUser? user = null;
+        if (customer != null)
         {
-            return new CredentialCheckResult(false, null, false, new List<string>());
+            user = await _userManager.FindByIdAsync(customer.Id.ToString());
+        }
+        else
+        {
+            var username = $"{sanitizedMobile}_0";
+            user = await _userManager.FindByNameAsync(username)
+                ?? await _userManager.FindByNameAsync(mobileNumber)
+                ?? await _userManager.FindByEmailAsync(mobileNumber);
+
+            if (user != null)
+            {
+                customer = await _context.Customers.FirstOrDefaultAsync(c => c.Id == user.Id, ct);
+            }
         }
 
-        var user = await _userManager.FindByIdAsync(customer.Id.ToString());
         if (user == null)
         {
-            _logger.LogWarning("Identity user not found for Admin Customer {CustomerId}", customer.Id);
             return new CredentialCheckResult(false, null, false, new List<string>());
         }
 
@@ -82,7 +92,10 @@ public class AuthenticationService : IAuthenticationService
         }
 
         var roles = await _userManager.GetRolesAsync(user);
-        return new CredentialCheckResult(true, user.Id, customer.IsFirstLogin, roles.ToList(), customer.GymType);
+        var isFirstLogin = customer?.IsFirstLogin ?? user.MustChangePassword;
+        var gymType = customer?.GymType ?? GymType.ProFighter;
+
+        return new CredentialCheckResult(true, user.Id, isFirstLogin, roles.ToList(), gymType);
     }
 
 
