@@ -183,6 +183,12 @@ public class AuthenticationService : IAuthenticationService
             throw new InvalidOperationException($"User with ID {userId} not found.");
         }
 
+        if (user.EmailConfirmed)
+        {
+            _logger.LogInformation("Email already confirmed for user {UserId}", userId);
+            return;
+        }
+
         var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
         var result = await _userManager.ConfirmEmailAsync(user, token);
 

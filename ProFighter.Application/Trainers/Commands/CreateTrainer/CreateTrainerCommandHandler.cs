@@ -35,7 +35,6 @@ public class CreateTrainerCommandHandler : IRequestHandler<CreateTrainerCommand,
         var trainer = new Trainer(
             id: trainerId,
             name: request.Name,
-            specialization: request.Specialization,
             bio: request.Bio,
             isActive: isActive,
             gymType: request.GymType

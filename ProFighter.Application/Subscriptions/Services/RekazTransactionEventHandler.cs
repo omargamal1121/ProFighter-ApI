@@ -7,25 +7,28 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ProFighter.Application.Common.Interfaces;
 
+using ProFighter.Domain.Enums;
+using ProFighter.Application.Common.Models;
+
 namespace ProFighter.Application.Subscriptions.Services;
 
 public class RekazTransactionEventHandler : IRekazTransactionEventHandler
 {
     private readonly IApplicationDbContext _context;
-    private readonly IRekazTransactionsClient _transactionsClient;
+    private readonly IRekazClientFactory _rekazClientFactory;
     private readonly IRekazCustomerSyncService _customerSyncService;
     private readonly INotificationService _notificationService;
     private readonly ILogger<RekazTransactionEventHandler> _logger;
 
     public RekazTransactionEventHandler(
         IApplicationDbContext context,
-        IRekazTransactionsClient transactionsClient,
+        IRekazClientFactory rekazClientFactory,
         IRekazCustomerSyncService customerSyncService,
         INotificationService notificationService,
         ILogger<RekazTransactionEventHandler> logger)
     {
         _context = context;
-        _transactionsClient = transactionsClient;
+        _rekazClientFactory = rekazClientFactory;
         _customerSyncService = customerSyncService;
         _notificationService = notificationService;
         _logger = logger;
@@ -33,7 +36,7 @@ public class RekazTransactionEventHandler : IRekazTransactionEventHandler
 
     public async Task HandleAsync(Guid transactionId, string eventName, CancellationToken ct)
     {
-        var fetched = await _transactionsClient.GetTransactionByIdAsync(transactionId, ct);
+        var fetched = await FetchTransactionAsync(transactionId, ct);
         if (fetched is null)
         {
             _logger.LogWarning("Transaction {TransactionId} not found on re-fetch — allowing Hangfire retry", transactionId);
@@ -86,5 +89,34 @@ public class RekazTransactionEventHandler : IRekazTransactionEventHandler
         }
         
         _logger.LogInformation("Processed transaction {TransactionId} via webhook event {EventName}", transactionId, eventName);
+    }
+
+    private async Task<RekazTransactionResult?> FetchTransactionAsync(Guid transactionId, CancellationToken ct)
+    {
+        Exception? lastException = null;
+        foreach (var gymType in Enum.GetValues<GymType>())
+        {
+            try
+            {
+                var client = _rekazClientFactory.GetClient(gymType);
+                var fetched = await client.Transactions.GetTransactionByIdAsync(transactionId, ct);
+                if (fetched is not null)
+                {
+                    return fetched;
+                }
+            }
+            catch (Exception ex)
+            {
+                lastException = ex;
+                _logger.LogDebug(ex, "Failed to fetch transaction {TransactionId} for GymType {GymType}", transactionId, gymType);
+            }
+        }
+
+        if (lastException is not null && lastException is not ProFighter.Application.Common.Exceptions.RekazApiException { StatusCode: System.Net.HttpStatusCode.NotFound })
+        {
+            _logger.LogWarning(lastException, "Exception fetching transaction {TransactionId} across all gyms", transactionId);
+        }
+
+        return null;
     }
 }

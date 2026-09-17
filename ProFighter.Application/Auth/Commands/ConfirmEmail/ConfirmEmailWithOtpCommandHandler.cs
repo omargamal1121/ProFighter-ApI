@@ -41,6 +41,12 @@ public sealed class ConfirmEmailWithOtpCommandHandler : IRequestHandler<ConfirmE
             return new ConfirmEmailWithOtpResult(false, "Invalid mobile number or OTP.");
         }
 
+        if (await _authenticationService.IsEmailConfirmedAsync(customer.Id, cancellationToken))
+        {
+            _logger.LogInformation("Email is already confirmed for customer {CustomerId}", customer.Id);
+            return new ConfirmEmailWithOtpResult(true, "Email is already confirmed.");
+        }
+
         // Validate and consume the OTP
         if (!_otpService.ValidateAndConsumeOtp(customer.Id.ToString(), request.Otp))
         {

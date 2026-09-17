@@ -8,7 +8,6 @@ namespace ProFighter.Application.Trainers.Commands.CreateTrainer;
 
 public record CreateTrainerCommand(
     string Name,
-    SubscriptionType Specialization,
     string? Bio,
     GymType GymType = GymType.ProFighter,
     IFormFile? Image = null

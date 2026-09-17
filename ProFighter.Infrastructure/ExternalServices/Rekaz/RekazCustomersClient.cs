@@ -158,6 +158,23 @@ public sealed class RekazCustomersClient : IRekazCustomersClient
         return MapCustomer(dto);
     }
 
+    /// <inheritdoc/>
+    public async Task<RekazCustomerResult?> GetCustomerByMobileNumberAsync(
+        string mobileNumber,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(mobileNumber))
+            throw new ArgumentException("Mobile number is required.", nameof(mobileNumber));
+
+        var list = await GetCustomersAsync(new RekazCustomersQuery(
+            SkipCount: 0,
+            MaxResultCount: 1,
+            MobileNumber: mobileNumber
+        ), ct);
+
+        return list.Items.FirstOrDefault();
+    }
+
     // -------------------------------------------------------------------------
     // Private helpers
     // -------------------------------------------------------------------------

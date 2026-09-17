@@ -6,7 +6,6 @@ namespace ProFighter.Application.Trainers.Common;
 public record TrainerDto(
     Guid Id,
     string Name,
-    SubscriptionType Specialization,
     string? Bio,
     bool IsActive,
     GymType GymType,
@@ -27,7 +26,6 @@ public record TrainerDto(
         return new TrainerDto(
             trainer.Id,
             trainer.Name,
-            trainer.Specialization,
             trainer.Bio,
             trainer.IsActive,
             trainer.GymType,

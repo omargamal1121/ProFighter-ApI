@@ -9,7 +9,6 @@ namespace ProFighter.Application.Trainers.Commands.UpdateTrainer;
 public record UpdateTrainerCommand(
     Guid Id,
     string Name,
-    SubscriptionType Specialization,
     string? Bio,
     GymType? GymType = null
 ) : IRequest<Result<TrainerDto>>;

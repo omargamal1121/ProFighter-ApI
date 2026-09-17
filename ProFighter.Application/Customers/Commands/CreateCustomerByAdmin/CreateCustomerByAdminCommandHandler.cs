@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ProFighter.Application.Common.Interfaces;
 using ProFighter.Application.Common.Models;
@@ -41,13 +42,32 @@ public class CreateCustomerByAdminCommandHandler : IRequestHandler<CreateCustome
 
 	public async Task<CreateCustomerByAdminResult> Handle(CreateCustomerByAdminCommand request, CancellationToken cancellationToken)
 	{
+		var currentGym = _gymContext.CurrentGymType;
+
+		var existingMobile = await _context.Customers
+			.AnyAsync(c => c.GymType == currentGym && c.MobileNumber == request.MobileNumber, cancellationToken);
+		if (existingMobile)
+		{
+			throw new InvalidOperationException($"A customer with mobile number '{request.MobileNumber}' already exists for this gym.");
+		}
+
+		if (!string.IsNullOrWhiteSpace(request.Email))
+		{
+			var existingEmail = await _context.Customers
+				.AnyAsync(c => c.GymType == currentGym && c.Email == request.Email, cancellationToken);
+			if (existingEmail)
+			{
+				throw new InvalidOperationException($"A customer with email '{request.Email}' already exists for this gym.");
+			}
+		}
+
 		var createRequest = new CreateRekazCustomerRequest(
 			Name: request.Name,
 			MobileNumber: request.MobileNumber,
 			Email: request.Email
 		);
 
-		var rekazClient = _rekazClientFactory.GetClient(_gymContext.CurrentGymType);
+		var rekazClient = _rekazClientFactory.GetClient(currentGym);
 		var rekazCustomerId = await rekazClient.Customers.CreateCustomerAsync(createRequest, cancellationToken);
 
 	
@@ -60,6 +80,7 @@ public class CreateCustomerByAdminCommandHandler : IRequestHandler<CreateCustome
 					request.Name,
 					request.MobileNumber,
 					request.Email,
+					gymType: currentGym,
 					ct: ct
 				);
 				await _context.SaveChangesAsync(ct);

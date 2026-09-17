@@ -45,7 +45,6 @@ public class AdminTrainersController : BaseController
     {
         var command = new CreateTrainerCommand(
             request.Name,
-            request.Specialization,
             request.Bio,
             request.GymType,
             request.Image);
@@ -79,7 +78,7 @@ public class AdminTrainersController : BaseController
     }
 
     /// <summary>
-    /// Updates trainer text data only (name, specialization, bio, gym type).
+    /// Updates trainer text data only (name, bio, gym type).
     /// Use the image endpoints below to manage images.
     /// </summary>
     [HttpPut("{id:guid}")]
@@ -90,7 +89,7 @@ public class AdminTrainersController : BaseController
         [FromBody] UpdateTrainerRequest request,
         CancellationToken ct)
     {
-        var command = new UpdateTrainerCommand(id, request.Name, request.Specialization, request.Bio, request.GymType);
+        var command = new UpdateTrainerCommand(id, request.Name, request.Bio, request.GymType);
         var result = await _mediator.Send(command, ct);
         return HandleResult(result);
     }
@@ -172,7 +171,6 @@ public class AdminTrainersController : BaseController
 public class CreateTrainerRequest
 {
     public string Name { get; set; } = null!;
-    public SubscriptionType Specialization { get; set; }
     public string? Bio { get; set; }
     public GymType GymType { get; set; } = GymType.ProFighter;
     public IFormFile? Image { get; set; }
@@ -187,7 +185,6 @@ public class UploadTrainerImageRequest
 
 public record UpdateTrainerRequest(
     string Name,
-    SubscriptionType Specialization,
     string? Bio,
     GymType? GymType
 );

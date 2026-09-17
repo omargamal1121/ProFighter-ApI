@@ -63,7 +63,9 @@ public class GlobalExceptionMiddleware : IMiddleware
         {
             UnauthorizedAccessException => CreateErrorResponse(
                 "Unauthorized",
-                "Authentication is required to access this resource.",
+                !string.IsNullOrWhiteSpace(exception.Message) && !exception.Message.StartsWith("Attempted to perform an unauthorized operation", StringComparison.OrdinalIgnoreCase)
+                    ? exception.Message
+                    : "Authentication is required to access this resource.",
                 HttpStatusCode.Unauthorized),
 
             ArgumentException or InvalidOperationException => CreateErrorResponse(

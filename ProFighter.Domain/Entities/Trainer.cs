@@ -9,7 +9,6 @@ public class Trainer : BaseEntity
 
     public string Name { get; private set; }
     public string? Bio { get; private set; }
-    public SubscriptionType Specialization { get; private set; }
     public bool IsActive { get; private set; }
     public IReadOnlyCollection<Media> Medias => _medias.AsReadOnly();
     public GymType GymType { get; private set; } = GymType.ProFighter;
@@ -20,27 +19,25 @@ public class Trainer : BaseEntity
         Name = null!;
     }
 
-    public Trainer(Guid id, string name, SubscriptionType specialization, string? bio = null, bool isActive = true, GymType gymType = GymType.ProFighter) : base()
+    public Trainer(Guid id, string name, string? bio = null, bool isActive = true, GymType gymType = GymType.ProFighter) : base()
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Trainer name cannot be empty.", nameof(name));
 
         Id = id;
         Name = name;
-        Specialization = specialization;
         Bio = bio;
         IsActive = isActive;
         GymType = gymType;
         CreatedAt = DateTime.UtcNow;
     }
 
-    public void UpdateProfile(string name, SubscriptionType specialization, string? bio, GymType? gymType = null, bool? isActive = null)
+    public void UpdateProfile(string name, string? bio, GymType? gymType = null, bool? isActive = null)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Trainer name cannot be empty.", nameof(name));
 
         Name = name;
-        Specialization = specialization;
         Bio = bio;
         if (gymType.HasValue) GymType = gymType.Value;
         if (isActive.HasValue) IsActive = isActive.Value;

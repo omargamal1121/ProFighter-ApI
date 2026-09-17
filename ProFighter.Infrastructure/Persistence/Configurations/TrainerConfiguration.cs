@@ -19,11 +19,6 @@ public class TrainerConfiguration : IEntityTypeConfiguration<Trainer>
         builder.Property(t => t.Bio)
             .HasMaxLength(1000);
 
-        builder.Property(t => t.Specialization)
-            .HasConversion<string>()
-            .HasMaxLength(50)
-            .IsRequired();
-
         builder.Property(t => t.IsActive)
             .IsRequired();
 

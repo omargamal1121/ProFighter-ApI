@@ -25,4 +25,9 @@ public interface IRekazCustomersClient
     /// Fetches a single customer by ID. Returns null if not found (404).
     /// </summary>
     Task<RekazCustomerResult?> GetCustomerByIdAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Fetches a single customer by mobile number. Returns null if not found.
+    /// </summary>
+    Task<RekazCustomerResult?> GetCustomerByMobileNumberAsync(string mobileNumber, CancellationToken ct = default);
 }

@@ -27,7 +27,7 @@ public class UpdateTrainerCommandHandler : IRequestHandler<UpdateTrainerCommand,
         if (trainer == null)
             return Result<TrainerDto>.Failure($"Trainer with ID '{request.Id}' was not found.", 404);
 
-        trainer.UpdateProfile(request.Name, request.Specialization, request.Bio, request.GymType);
+        trainer.UpdateProfile(request.Name, request.Bio, request.GymType);
         await _context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Updated Trainer {TrainerId}", trainer.Id);

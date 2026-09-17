@@ -14,7 +14,7 @@ public class RekazSubscriptionEventHandler : IRekazSubscriptionEventHandler
 {
     private readonly IApplicationDbContext _context;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly IRekazSubscriptionsClient _subscriptionsClient;
+    private readonly IRekazClientFactory _rekazClientFactory;
     private readonly IRekazCustomerSyncService _customerSyncService;
     private readonly INotificationService _notificationService;
     private readonly ILogger<RekazSubscriptionEventHandler> _logger;
@@ -22,14 +22,14 @@ public class RekazSubscriptionEventHandler : IRekazSubscriptionEventHandler
     public RekazSubscriptionEventHandler(
         IApplicationDbContext context,
         IUnitOfWork unitOfWork,
-        IRekazSubscriptionsClient subscriptionsClient,
+        IRekazClientFactory rekazClientFactory,
         IRekazCustomerSyncService customerSyncService,
         INotificationService notificationService,
         ILogger<RekazSubscriptionEventHandler> logger)
     {
         _context = context;
         _unitOfWork = unitOfWork;
-        _subscriptionsClient = subscriptionsClient;
+        _rekazClientFactory = rekazClientFactory;
         _customerSyncService = customerSyncService;
         _notificationService = notificationService;
         _logger = logger;
@@ -37,7 +37,7 @@ public class RekazSubscriptionEventHandler : IRekazSubscriptionEventHandler
 
     public async Task HandleAsync(Guid rekazSubscriptionId, string eventName, CancellationToken ct)
     {
-        var fetched = await _subscriptionsClient.GetSubscriptionByIdAsync(rekazSubscriptionId, ct);
+        var fetched = await FetchSubscriptionAsync(rekazSubscriptionId, ct);
         if (fetched is null)
         {
             _logger.LogWarning("Subscription {RekazSubscriptionId} not found on re-fetch — allowing Hangfire retry", rekazSubscriptionId);
@@ -104,5 +104,34 @@ public class RekazSubscriptionEventHandler : IRekazSubscriptionEventHandler
         {
             await _notificationService.SendToUserAsync(customerId, msg.Title, msg.Body, null, ct);
         }
+    }
+
+    private async Task<RekazSubscriptionResult?> FetchSubscriptionAsync(Guid rekazSubscriptionId, CancellationToken ct)
+    {
+        Exception? lastException = null;
+        foreach (var gymType in Enum.GetValues<GymType>())
+        {
+            try
+            {
+                var client = _rekazClientFactory.GetClient(gymType);
+                var fetched = await client.Subscriptions.GetSubscriptionByIdAsync(rekazSubscriptionId, ct);
+                if (fetched is not null)
+                {
+                    return fetched;
+                }
+            }
+            catch (Exception ex)
+            {
+                lastException = ex;
+                _logger.LogDebug(ex, "Failed to fetch subscription {RekazSubscriptionId} for GymType {GymType}", rekazSubscriptionId, gymType);
+            }
+        }
+
+        if (lastException is not null && lastException is not ProFighter.Application.Common.Exceptions.RekazApiException { StatusCode: System.Net.HttpStatusCode.NotFound })
+        {
+            _logger.LogWarning(lastException, "Exception fetching subscription {RekazSubscriptionId} across all gyms", rekazSubscriptionId);
+        }
+
+        return null;
     }
 }

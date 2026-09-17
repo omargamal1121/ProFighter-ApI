@@ -92,7 +92,15 @@ public class CustomerProvisioningService : ICustomerProvisioningService
             throw new InvalidOperationException($"User with mobile number {mobileNumber} already exists.", ex);
         }
 
-        var customer = new Customer(user.Id, name, mobileNumber, email, rekazCustomerId); // EmailRegistration users set their own password, so no first login required
+        var customer = new Customer(
+            id: user.Id,
+            name: name,
+            mobileNumber: mobileNumber,
+            source: source,
+            email: email,
+            rekazCustomerId: rekazCustomerId,
+            isFirstLogin: true,
+            gymType: gymType);
         _context.Customers.Add(customer);
 
         return customer.Id;
