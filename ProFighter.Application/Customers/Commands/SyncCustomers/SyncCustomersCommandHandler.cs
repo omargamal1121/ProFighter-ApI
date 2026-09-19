@@ -59,6 +59,7 @@ public class SyncCustomersCommandHandler : IRequestHandler<SyncCustomersCommand,
 
             if (rekazResult.Items.Count == 0)
             {
+                _logger.LogInformation("No more customers to sync. Total processed: {Total}", totalProcessed);
                 break;
             }
 
@@ -86,6 +87,8 @@ public class SyncCustomersCommandHandler : IRequestHandler<SyncCustomersCommand,
             }
 
             skipCount += maxResultCount;
+
+            // Break if we've processed all available items (less than page size)
             if (rekazResult.Items.Count < maxResultCount)
             {
                 break;

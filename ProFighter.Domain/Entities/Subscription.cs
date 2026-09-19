@@ -101,7 +101,7 @@ public class Subscription : BaseEntity
         MarkAsUpdated();
     }
 
-    public void SyncFromRekaz(string status, DateTime startDate, DateTime? endDate, decimal price, string? name = null)
+    public void SyncFromRekaz(string status, DateTime startDate, DateTime? endDate, decimal price, string? name = null, SubscriptionType? type = null)
     {
         Status = status;
         StartDate = startDate;
@@ -110,6 +110,10 @@ public class Subscription : BaseEntity
         if (name != null)
         {
             Name = name;
+        }
+        if (type.HasValue)
+        {
+            Type = type.Value;
         }
         MarkAsUpdated();
     }

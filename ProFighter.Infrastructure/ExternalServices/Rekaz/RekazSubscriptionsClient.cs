@@ -223,6 +223,61 @@ public sealed class RekazSubscriptionsClient : IRekazSubscriptionsClient
         return "?" + string.Join("&", parts);
     }
 
+    /// <inheritdoc/>
+    public async Task<List<RekazSubscriptionResult>> GetSubscriptionsByCustomerAsync(
+        Guid customerId,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("Rekaz GetSubscriptionsByCustomer → GET {Endpoint} for CustomerId {CustomerId}", SubscriptionsEndpoint, customerId);
+
+        var allItems = new List<RekazSubscriptionResult>();
+        var skipCount = 0;
+        const int pageSize = 100;
+
+        while (true)
+        {
+            var query = new RekazSubscriptionsQuery(
+                CustomerId: customerId,
+                MaxResultCount: pageSize,
+                SkipCount: skipCount);
+
+            RekazSubscriptionsListResult result;
+            try
+            {
+                result = await GetSubscriptionsAsync(query, ct);
+            }
+            catch (RekazApiException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                _logger.LogWarning("Rekaz rate limit hit (429) for CustomerId={CustomerId} at SkipCount={SkipCount}. Retrying after delay.", customerId, skipCount);
+                await Task.Delay(TimeSpan.FromMilliseconds(200), ct);
+                result = await GetSubscriptionsAsync(query, ct);
+            }
+
+            if (result.Items == null || result.Items.Count == 0)
+                break;
+
+            // Check if any returned item has a different CustomerId
+            var mismatched = result.Items.FirstOrDefault(i => i.CustomerId != customerId);
+            if (mismatched != null)
+            {
+                _logger.LogWarning(
+                    "CustomerId filter ignored by Rekaz. Requested CustomerId: {RequestedCustomerId}, but API returned item with CustomerId: {MismatchedCustomerId}",
+                    customerId, mismatched.CustomerId);
+                throw new RekazCustomerFilterNotSupportedException(customerId, mismatched.CustomerId);
+            }
+
+            allItems.AddRange(result.Items);
+
+            skipCount += result.Items.Count;
+            if (skipCount >= result.TotalCount || result.Items.Count == 0)
+                break;
+
+            await Task.Delay(TimeSpan.FromMilliseconds(50), ct);
+        }
+
+        return allItems;
+    }
+
     internal static RekazSubscriptionResult MapSubscription(RekazSubscriptionDto dto)
     {
         string? name = null;
@@ -249,7 +304,11 @@ public sealed class RekazSubscriptionsClient : IRekazSubscriptionsClient
             IsPaused: dto.IsPaused,
             PausedAt: dto.PausedAt,
             ResumeAt: dto.ResumeAt,
-            Name: name
+            Name: name,
+            PriceId: firstItem?.PriceId,
+            ProductId: firstItem?.ProductId,
+            CreationTime: dto.CreationTime != default ? new DateTimeOffset(dto.CreationTime, TimeSpan.Zero) : null,
+            LastModificationTime: dto.LastModificationTime.HasValue ? new DateTimeOffset(dto.LastModificationTime.Value, TimeSpan.Zero) : null
         );
     }
 }

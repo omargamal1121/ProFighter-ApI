@@ -50,16 +50,31 @@ public class FirstLoginTokenService : IFirstLoginTokenService
 
     public string? ValidateAndConsumeToken(string token)
     {
+        var mobileNumber = ValidateToken(token);
+        if (mobileNumber != null)
+        {
+            InvalidateToken(token);
+            _logger.LogInformation("First-login token consumed for mobile number {MobileNumber}", mobileNumber);
+        }
+        return mobileNumber;
+    }
+
+    public string? ValidateToken(string token)
+    {
         var cacheKey = $"first-login-token:{token}";
 
         if (_cache.TryGetValue(cacheKey, out string? mobileNumber) && mobileNumber != null)
         {
-            _cache.Remove(cacheKey);
-            _logger.LogInformation("First-login token validated and consumed for mobile number {MobileNumber}", mobileNumber);
             return mobileNumber;
         }
 
         _logger.LogWarning("Invalid or expired first-login token: {Token}", token);
         return null;
+    }
+
+    public void InvalidateToken(string token)
+    {
+        var cacheKey = $"first-login-token:{token}";
+        _cache.Remove(cacheKey);
     }
 }

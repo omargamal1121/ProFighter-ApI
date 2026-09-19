@@ -87,10 +87,12 @@ public class SyncSubscriptionsCommandHandler : IRequestHandler<SyncSubscriptions
                     }
                 }
 
-                skipCount += maxResultCount;
+                skipCount += rekazResult.Items.Count;
 
-                // Break if we've processed all available items
-                if (rekazResult.Items.Count < maxResultCount)
+                _logger.LogInformation("Fetched subscription page starting at {SkipCount}, received {Count}/{TotalCount} items.", 
+                    skipCount - rekazResult.Items.Count, rekazResult.Items.Count, rekazResult.TotalCount);
+
+                if (skipCount >= rekazResult.TotalCount || rekazResult.Items.Count == 0)
                 {
                     break;
                 }
@@ -140,7 +142,7 @@ public class SyncSubscriptionsCommandHandler : IRequestHandler<SyncSubscriptions
                 id: Guid.NewGuid(),
                 customerId: customer.Id,
                 rekazSubscriptionId: rekazSubscription.Id,
-                type: SubscriptionType.MartialArts, // TODO: real priceId→Type mapping
+                type: SubscriptionType.MartialArts,
                 startDate: rekazSubscription.StartAt,
                 price: rekazSubscription.TotalAmount,
                 name: rekazSubscription.Name);

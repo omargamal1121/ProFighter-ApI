@@ -107,19 +107,36 @@ public class AuthenticationService : IAuthenticationService
             throw new InvalidOperationException($"User with ID {userId} not found.");
         }
 
-        // Remove existing password and add new one
-        var removeResult = await _userManager.RemovePasswordAsync(user);
-        if (!removeResult.Succeeded)
+        // Validate new password FIRST before removing or modifying existing password
+        foreach (var validator in _userManager.PasswordValidators)
         {
-            var errors = string.Join("; ", removeResult.Errors.Select(e => e.Description));
-            throw new InvalidOperationException($"Failed to remove password: {errors}");
+            var valResult = await validator.ValidateAsync(_userManager, user, newPassword);
+            if (!valResult.Succeeded)
+            {
+                var errors = string.Join("; ", valResult.Errors.Select(e => e.Description));
+                throw new InvalidOperationException($"Password validation failed: {errors}");
+            }
         }
 
-        var addResult = await _userManager.AddPasswordAsync(user, newPassword);
-        if (!addResult.Succeeded)
+        // Safely set password using ResetPasswordAsync (or AddPasswordAsync if user has no password)
+        if (await _userManager.HasPasswordAsync(user))
         {
-            var errors = string.Join("; ", addResult.Errors.Select(e => e.Description));
-            throw new InvalidOperationException($"Failed to add password: {errors}");
+            var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var resetResult = await _userManager.ResetPasswordAsync(user, resetToken, newPassword);
+            if (!resetResult.Succeeded)
+            {
+                var errors = string.Join("; ", resetResult.Errors.Select(e => e.Description));
+                throw new InvalidOperationException($"Failed to set password: {errors}");
+            }
+        }
+        else
+        {
+            var addResult = await _userManager.AddPasswordAsync(user, newPassword);
+            if (!addResult.Succeeded)
+            {
+                var errors = string.Join("; ", addResult.Errors.Select(e => e.Description));
+                throw new InvalidOperationException($"Failed to set password: {errors}");
+            }
         }
 
         // Update email
@@ -130,7 +147,7 @@ public class AuthenticationService : IAuthenticationService
         if (!updateResult.Succeeded)
         {
             var errors = string.Join("; ", updateResult.Errors.Select(e => e.Description));
-            throw new InvalidOperationException($"Failed to update user: {errors}");
+            throw new InvalidOperationException($"Failed to update user profile: {errors}");
         }
 
         _logger.LogInformation("Password and email updated successfully for user {UserId}", userId);

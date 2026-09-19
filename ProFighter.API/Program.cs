@@ -98,8 +98,11 @@ namespace ProFighter.API
 			app.UseMiddleware<GymTypeValidationMiddleware>();
 			app.UseRateLimiter();
 
-			// Hangfire Dashboard (requires authentication in production)
-			app.UseHangfireDashboard();
+			// Hangfire Dashboard (configured for public access)
+			app.UseHangfireDashboard("/hangfire", new DashboardOptions
+			{
+				Authorization = new[] { new PublicHangfireDashboardAuthorizationFilter() }
+			});
 
 			app.MapControllers();
 
@@ -157,3 +160,12 @@ namespace ProFighter.API
 		}
 	}
 }
+
+public class PublicHangfireDashboardAuthorizationFilter : Hangfire.Dashboard.IDashboardAuthorizationFilter
+{
+    public bool Authorize(Hangfire.Dashboard.DashboardContext context)
+    {
+        return true;
+    }
+}
+

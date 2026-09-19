@@ -45,7 +45,8 @@ public record RekazSubscriptionItemDto(
     string? Name,
     string? ProductName,
     int Quantity,
-    RekazLocalizedNameDto? LocalizedProductName = null
+    RekazLocalizedNameDto? LocalizedProductName = null,
+    Guid? ProductId = null
 );
 
 /// <summary>

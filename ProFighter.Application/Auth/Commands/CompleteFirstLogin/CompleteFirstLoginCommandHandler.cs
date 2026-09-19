@@ -43,7 +43,7 @@ public sealed class CompleteFirstLoginCommandHandler : IRequestHandler<CompleteF
 
     public async Task<CompleteFirstLoginResult> Handle(CompleteFirstLoginCommand request, CancellationToken cancellationToken)
     {
-        var mobileNumber = _firstLoginTokenService.ValidateAndConsumeToken(request.Token);
+        var mobileNumber = _firstLoginTokenService.ValidateToken(request.Token);
         if (mobileNumber is null)
             throw new UnauthorizedAccessException("Invalid or expired setup token. Please log in again.");
 
@@ -65,6 +65,9 @@ public sealed class CompleteFirstLoginCommandHandler : IRequestHandler<CompleteF
         }
 
         await _authenticationService.SetPasswordAndEmailAsync(customer.Id, request.NewPassword, request.Email, cancellationToken);
+
+        // Consume first-login token only AFTER password setting succeeds
+        _firstLoginTokenService.InvalidateToken(request.Token);
 
         // Update Customer entity with email and mark first login as completed
         try

@@ -24,4 +24,10 @@ public interface IRekazSubscriptionsClient
     /// Gets a single subscription by ID from Rekaz. Returns null if response status is 404.
     /// </summary>
     Task<RekazSubscriptionResult?> GetSubscriptionByIdAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Fetches all subscriptions for a specific customer from Rekaz.
+    /// Throws <see cref="Exceptions.RekazCustomerFilterNotSupportedException"/> if Rekaz API ignores the CustomerId filter.
+    /// </summary>
+    Task<List<RekazSubscriptionResult>> GetSubscriptionsByCustomerAsync(Guid customerId, CancellationToken ct = default);
 }

@@ -29,6 +29,11 @@ public static class DependencyInjection
         services.Configure<RekazWebhookOptions>(
             configuration.GetSection(RekazWebhookOptions.SectionName));
 
+        services.Configure<RekazSubscriptionTypeOptions>(
+            configuration.GetSection(RekazSubscriptionTypeOptions.SectionName));
+
+        services.AddSingleton<ISubscriptionTypeMapper, SubscriptionTypeMapper>();
+
         // ── Per-gym multi-tenant options ──────────────────────────────────────────
         // Bound to the same "Rekaz" section.
         // Keys must be set via environment variables or user-secrets, e.g.:
@@ -91,11 +96,11 @@ public static class DependencyInjection
 
         services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
         {
-            options.Password.RequireDigit = true;
-            options.Password.RequireLowercase = true;
-            options.Password.RequireUppercase = true;
-            options.Password.RequireNonAlphanumeric = true;
-            options.Password.RequiredLength = 8;
+            options.Password.RequireDigit = false;
+            options.Password.RequireLowercase = false;
+            options.Password.RequireUppercase = false;
+            options.Password.RequireNonAlphanumeric = false;
+            options.Password.RequiredLength = 6;
             options.User.RequireUniqueEmail = false;
         })
         .AddEntityFrameworkStores<AppDbContext>()
@@ -110,7 +115,7 @@ public static class DependencyInjection
 	  .UseStorage(new MySqlStorage(connectionString, new MySqlStorageOptions
 	  {
 		  TransactionTimeout = TimeSpan.FromMinutes(1),
-		  QueuePollInterval = TimeSpan.FromSeconds(30),
+		  QueuePollInterval = TimeSpan.FromSeconds(2),
 		  JobExpirationCheckInterval = TimeSpan.FromHours(1),
 		  CountersAggregateInterval = TimeSpan.FromMinutes(5),
 		  PrepareSchemaIfNecessary = true,

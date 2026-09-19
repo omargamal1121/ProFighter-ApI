@@ -1,6 +1,8 @@
+using Hangfire;
 using MediatR;
 using ProFighter.Application.Common.Interfaces;
 using ProFighter.Application.Common.Models;
+using ProFighter.Application.Subscriptions.Jobs;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,18 +13,31 @@ public class CreateRekazSubscriptionCommandHandler : IRequestHandler<CreateRekaz
 {
     private readonly IRekazClientFactory _clientFactory;
     private readonly ICurrentGymContext _gymContext;
+    private readonly IBackgroundJobClient _backgroundJobs;
 
     public CreateRekazSubscriptionCommandHandler(
         IRekazClientFactory clientFactory,
-        ICurrentGymContext gymContext)
+        ICurrentGymContext gymContext,
+        IBackgroundJobClient backgroundJobs)
     {
         _clientFactory = clientFactory;
         _gymContext = gymContext;
+        _backgroundJobs = backgroundJobs;
     }
 
     public async Task<RekazSubscriptionCreatedResult> Handle(CreateRekazSubscriptionCommand request, CancellationToken cancellationToken)
     {
-        var rekazClient = _clientFactory.GetClient(_gymContext.CurrentGymType);
-        return await rekazClient.Subscriptions.CreateSubscriptionAsync(request.Request, cancellationToken);
+        var gymType = _gymContext.CurrentGymType;
+        var rekazClient = _clientFactory.GetClient(gymType);
+        var result = await rekazClient.Subscriptions.CreateSubscriptionAsync(request.Request, cancellationToken);
+
+        if (request.Request.CustomerId.HasValue)
+        {
+            var customerId = request.Request.CustomerId.Value;
+            _backgroundJobs.Enqueue<UserSubscriptionSyncJob>(job => job.SyncUserSubscriptionsAsync(customerId, gymType, CancellationToken.None));
+        }
+
+        return result;
     }
 }
+

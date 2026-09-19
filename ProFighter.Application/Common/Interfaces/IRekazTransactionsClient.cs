@@ -9,7 +9,10 @@ namespace ProFighter.Application.Common.Interfaces;
 
 public record RekazTransactionItem(
     [property: JsonPropertyName("nameAr")] string? NameAr,
-    [property: JsonPropertyName("nameEn")] string? NameEn
+    [property: JsonPropertyName("nameEn")] string? NameEn,
+    [property: JsonPropertyName("priceId")] Guid? PriceId = null,
+    [property: JsonPropertyName("productId")] Guid? ProductId = null,
+    [property: JsonPropertyName("type")] string? Type = null
 );
 
 public record RekazTransactionResult(
@@ -20,7 +23,8 @@ public record RekazTransactionResult(
     decimal PaidAmount, 
     decimal RemainingAmount,
     string Currency,
-    List<RekazTransactionItem> Items
+    List<RekazTransactionItem> Items,
+    [property: JsonPropertyName("creationTime")] DateTimeOffset? CreationTime = null
 );
 
 public interface IRekazTransactionsClient
