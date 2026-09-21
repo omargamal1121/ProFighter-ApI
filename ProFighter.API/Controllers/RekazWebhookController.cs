@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Hangfire;
 using ProFighter.Application.Common.Interfaces;
 using ProFighter.Domain.Entities;
+using ProFighter.Domain.Enums;
 using ProFighter.Infrastructure.ExternalServices.Rekaz;
 using System.Text.Json;
 
@@ -40,7 +41,7 @@ public class RekazWebhookController : ControllerBase
         if (path != _webhookOptions.ReceiverPath)
             return NotFound(); // plain 404 — don't reveal whether the path is "close"
 
-        return await ProcessWebhookRequestAsync("ProFighter", ct);
+        return await ProcessWebhookRequestAsync(GymType.ProFighter, ct);
     }
 
     /// <summary>
@@ -58,10 +59,10 @@ public class RekazWebhookController : ControllerBase
         if (path != expectedPath)
             return NotFound(); // plain 404
 
-        return await ProcessWebhookRequestAsync("ProGym", ct);
+        return await ProcessWebhookRequestAsync(GymType.ProGym, ct);
     }
 
-    private async Task<IActionResult> ProcessWebhookRequestAsync(string gymSource, CancellationToken ct)
+    private async Task<IActionResult> ProcessWebhookRequestAsync(GymType gymType, CancellationToken ct)
     {
         string rawBody;
         using (var reader = new StreamReader(Request.Body))
@@ -96,14 +97,14 @@ public class RekazWebhookController : ControllerBase
         var alreadyExists = await _context.RekazWebhookInboxEntries.AnyAsync(w => w.Id == eventId, ct);
         if (!alreadyExists)
         {
-            var entry = new RekazWebhookInboxEntry(eventId, eventName, rawBody);
+            var entry = new RekazWebhookInboxEntry(eventId, eventName, rawBody, gymType);
             _context.RekazWebhookInboxEntries.Add(entry);
             await _context.SaveChangesAsync(ct);
 
             BackgroundJob.Enqueue<IRekazWebhookProcessor>(p => p.ProcessAsync(eventId, CancellationToken.None));
         }
 
-        _logger.LogInformation("Rekaz webhook [{GymSource}] received: {EventName} ({EventId})", gymSource, eventName, eventId);
+        _logger.LogInformation("Rekaz webhook [{GymType}] received: {EventName} ({EventId})", gymType, eventName, eventId);
 
         return Ok(); // acknowledge delivery fast per Rekaz delivery contract
     }

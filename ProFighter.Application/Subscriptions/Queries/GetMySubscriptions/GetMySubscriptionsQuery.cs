@@ -28,7 +28,7 @@ public record MySubscriptionDto(
     Guid Id,
     Guid RekazSubscriptionId,
     string? Name,
-    string Type,
+    string? Type,
     string Status,
     DateTime StartDate,
     DateTime? EndDate,

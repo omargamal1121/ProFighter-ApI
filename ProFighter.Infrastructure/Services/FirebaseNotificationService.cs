@@ -80,7 +80,7 @@ public class FirebaseNotificationService : INotificationService
         catch (Exception ex)
         {
             _logger.LogError(ex, "An error occurred while attempting to send a push notification to user {UserId}.", userId);
-            // We swallow the exception here because push notifications should not fail the main transaction/webhook.
+           
         }
     }
 }

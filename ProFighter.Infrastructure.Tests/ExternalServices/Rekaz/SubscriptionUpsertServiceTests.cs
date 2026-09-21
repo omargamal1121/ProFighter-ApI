@@ -29,10 +29,9 @@ public class SubscriptionUpsertServiceTests
         // Arrange
         using var context = CreateInMemoryDbContext();
         var customerSync = Substitute.For<IRekazCustomerSyncService>();
-        var typeMapper = Substitute.For<ISubscriptionTypeMapper>();
         var logger = Substitute.For<ILogger<SubscriptionUpsertService>>();
 
-        var service = new SubscriptionUpsertService(context, customerSync, typeMapper, logger);
+        var service = new SubscriptionUpsertService(context, customerSync, logger);
 
         var rekazSub = new RekazSubscriptionResult(
             Id: Guid.NewGuid(),
@@ -62,19 +61,16 @@ public class SubscriptionUpsertServiceTests
         // Arrange
         using var context = CreateInMemoryDbContext();
         var customerSync = Substitute.For<IRekazCustomerSyncService>();
-        var typeMapper = Substitute.For<ISubscriptionTypeMapper>();
         var logger = Substitute.For<ILogger<SubscriptionUpsertService>>();
 
         var rekazCustomerId = Guid.NewGuid();
         var localCustomer = new Customer(Guid.NewGuid(), "John Doe", "123456789", CustomerSource.LegacyRekazImport, rekazCustomerId: rekazCustomerId, gymType: GymType.ProFighter);
 
-        customerSync.EnsureLocalCustomerAsync(rekazCustomerId, GymType.ProFighter, Arg.Any<System.Threading.CancellationToken>())
-            .Returns(Task.FromResult(localCustomer));
+        customerSync.EnsureLocalCustomerAsync(rekazCustomerId, GymType.ProFighter, Arg.Any<ISet<Guid>?>(), Arg.Any<System.Threading.CancellationToken>())
+            .Returns(Task.FromResult<Customer?>(localCustomer));
 
         var productId = Guid.NewGuid();
-        typeMapper.MapSubscriptionType(GymType.ProFighter, productId).Returns(SubscriptionType.Swimming);
-
-        var service = new SubscriptionUpsertService(context, customerSync, typeMapper, logger);
+        var service = new SubscriptionUpsertService(context, customerSync, logger);
 
         var rekazSubId = Guid.NewGuid();
         var rekazSub = new RekazSubscriptionResult(
@@ -102,41 +98,42 @@ public class SubscriptionUpsertServiceTests
         Assert.Equal(SubscriptionUpsertResult.Created, result);
         var created = await context.Subscriptions.FirstOrDefaultAsync(s => s.RekazSubscriptionId == rekazSubId && s.GymType == GymType.ProFighter);
         Assert.NotNull(created);
-        Assert.Equal(SubscriptionType.Swimming, created.Type);
+        Assert.Null(created.Type);
         Assert.Equal("Pending", created.Status);
         Assert.Equal("سباحة شهر", created.Name);
     }
 
     [Fact]
-    public async Task UpsertSubscriptionAsync_WhenSubscriptionExists_UpdatesExistingSubscriptionAndType()
+    public async Task UpsertSubscriptionAsync_WhenSubscriptionExists_UpdatesExistingSubscriptionAndName()
     {
         // Arrange
         using var context = CreateInMemoryDbContext();
         var customerSync = Substitute.For<IRekazCustomerSyncService>();
-        var typeMapper = Substitute.For<ISubscriptionTypeMapper>();
         var logger = Substitute.For<ILogger<SubscriptionUpsertService>>();
 
         var rekazCustomerId = Guid.NewGuid();
         var customerId = Guid.NewGuid();
         var rekazSubId = Guid.NewGuid();
 
-        // Existing subscription was wrongly MartialArts
         var existingSub = new Subscription(
             id: Guid.NewGuid(),
             customerId: customerId,
             rekazSubscriptionId: rekazSubId,
-            type: SubscriptionType.MartialArts,
+            type: null,
             startDate: DateTime.UtcNow.AddDays(-5),
             price: 100m,
+            name: "old name",
             gymType: GymType.ProGym);
 
         context.Subscriptions.Add(existingSub);
         await context.SaveChangesAsync();
 
-        var productId = Guid.NewGuid();
-        typeMapper.MapSubscriptionType(GymType.ProGym, productId).Returns(SubscriptionType.Swimming);
+        var localCustomer = new Customer(customerId, "Jane Doe", "987654321", CustomerSource.LegacyRekazImport, rekazCustomerId: rekazCustomerId, gymType: GymType.ProGym);
+        customerSync.EnsureLocalCustomerAsync(rekazCustomerId, GymType.ProGym, Arg.Any<ISet<Guid>?>(), Arg.Any<System.Threading.CancellationToken>())
+            .Returns(Task.FromResult<Customer?>(localCustomer));
 
-        var service = new SubscriptionUpsertService(context, customerSync, typeMapper, logger);
+        var productId = Guid.NewGuid();
+        var service = new SubscriptionUpsertService(context, customerSync, logger);
 
         var rekazSub = new RekazSubscriptionResult(
             Id: rekazSubId,
@@ -151,7 +148,7 @@ public class SubscriptionUpsertServiceTests
             IsPaused: false,
             PausedAt: null,
             ResumeAt: null,
-            Name: "سباحة شهر",
+            Name: "سباحة شهر جديدة",
             ProductId: productId
         );
 
@@ -162,7 +159,53 @@ public class SubscriptionUpsertServiceTests
         Assert.Equal(SubscriptionUpsertResult.Updated, result);
         var updated = await context.Subscriptions.FirstOrDefaultAsync(s => s.RekazSubscriptionId == rekazSubId && s.GymType == GymType.ProGym);
         Assert.NotNull(updated);
-        Assert.Equal(SubscriptionType.Swimming, updated.Type); // Type updated!
         Assert.Equal("Active", updated.Status);
+        Assert.Equal("سباحة شهر جديدة", updated.Name);
+    }
+
+    [Fact]
+    public async Task ConcurrentHandlers_ForSameCustomerAndSubscription_HandlesConcurrencySuccessfully()
+    {
+        // Arrange
+        using var context = CreateInMemoryDbContext();
+        var customerSync = Substitute.For<IRekazCustomerSyncService>();
+        var logger = Substitute.For<ILogger<SubscriptionUpsertService>>();
+
+        var rekazCustomerId = Guid.NewGuid();
+        var localCustomer = new Customer(Guid.NewGuid(), "Concurrent Customer", "123456789", CustomerSource.LegacyRekazImport, rekazCustomerId: rekazCustomerId, gymType: GymType.ProFighter);
+
+        customerSync.EnsureLocalCustomerAsync(rekazCustomerId, GymType.ProFighter, Arg.Any<ISet<Guid>?>(), Arg.Any<System.Threading.CancellationToken>())
+            .Returns(Task.FromResult<Customer?>(localCustomer));
+
+        var service = new SubscriptionUpsertService(context, customerSync, logger);
+
+        var rekazSubId = Guid.NewGuid();
+        var rekazSub = new RekazSubscriptionResult(
+            Id: rekazSubId,
+            SubscriptionCode: "SUB-CONCURRENT",
+            CustomerId: rekazCustomerId,
+            StartAt: DateTime.UtcNow,
+            EndAt: DateTime.UtcNow.AddMonths(1),
+            Status: "Active",
+            PaidAmount: 100m,
+            TotalAmount: 100m,
+            RemainingAmount: 0m,
+            IsPaused: false,
+            PausedAt: null,
+            ResumeAt: null,
+            Name: "اشتراك عام"
+        );
+
+        // Act - Simulate 2 concurrent tasks processing the same subscription
+        var task1 = service.UpsertSubscriptionAsync(rekazSub, GymType.ProFighter);
+        var task2 = service.UpsertSubscriptionAsync(rekazSub, GymType.ProFighter);
+
+        var results = await Task.WhenAll(task1, task2);
+        await context.SaveChangesAsync();
+
+        // Assert
+        Assert.Contains(SubscriptionUpsertResult.Created, results);
+        var count = await context.Subscriptions.CountAsync(s => s.RekazSubscriptionId == rekazSubId && s.GymType == GymType.ProFighter);
+        Assert.Equal(1, count);
     }
 }

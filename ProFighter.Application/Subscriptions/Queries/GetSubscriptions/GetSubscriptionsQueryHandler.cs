@@ -95,7 +95,7 @@ public class GetSubscriptionsQueryHandler : IRequestHandler<GetSubscriptionsQuer
             CustomerId: s.CustomerId,
             RekazSubscriptionId: s.RekazSubscriptionId,
             Name: s.Name,
-            Type: s.Type.ToString(),
+            Type: s.Type?.ToString(),
             Status: s.Status,
             StartDate: s.StartDate,
             EndDate: s.EndDate,

@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using ProFighter.Application.Common.Models;
@@ -9,6 +11,7 @@ public enum SubscriptionUpsertResult
 {
     Created,
     Updated,
+    Unchanged,
     Skipped
 }
 
@@ -28,5 +31,7 @@ public interface ISubscriptionUpsertService
     Task<SubscriptionUpsertResult> UpsertSubscriptionAsync(
         RekazSubscriptionResult rekazSub,
         GymType gymType,
+        ISet<Guid>? negativeCache = null,
+        ISet<Guid>? unmappedProductTracker = null,
         CancellationToken ct = default);
 }

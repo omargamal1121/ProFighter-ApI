@@ -18,12 +18,13 @@ public class GymTypeValidationMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        if (context.Request.Path.StartsWithSegments("/hangfire") ||
-            context.Request.Path.StartsWithSegments("/swagger") ||
-            context.Request.Path.StartsWithSegments("/health") ||
-            context.Request.Path.StartsWithSegments("/webhooks") ||
-            context.Request.Path.StartsWithSegments("/api/auth/admin") ||
-            context.Request.Path.StartsWithSegments("/api/admin") ||
+        if (context.Request.Path.StartsWithSegments("/hangfire", StringComparison.OrdinalIgnoreCase) ||
+            context.Request.Path.StartsWithSegments("/swagger", StringComparison.OrdinalIgnoreCase) ||
+            context.Request.Path.StartsWithSegments("/health", StringComparison.OrdinalIgnoreCase) ||
+            context.Request.Path.StartsWithSegments("/webhooks", StringComparison.OrdinalIgnoreCase) ||
+            context.Request.Path.StartsWithSegments("/api/webhooks", StringComparison.OrdinalIgnoreCase) ||
+            context.Request.Path.StartsWithSegments("/api/auth/admin", StringComparison.OrdinalIgnoreCase) ||
+            context.Request.Path.StartsWithSegments("/api/admin", StringComparison.OrdinalIgnoreCase) ||
             context.User.IsInRole("Admin"))
         {
             await _next(context);

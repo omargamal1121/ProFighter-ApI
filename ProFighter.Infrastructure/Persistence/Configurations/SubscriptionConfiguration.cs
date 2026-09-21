@@ -22,7 +22,7 @@ public class SubscriptionConfiguration : IEntityTypeConfiguration<Subscription>
         builder.Property(s => s.Type)
             .HasConversion<string>()
             .HasMaxLength(50)
-            .IsRequired();
+            .IsRequired(false);
 
         builder.Property(s => s.Status)
             .HasMaxLength(50)

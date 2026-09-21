@@ -2,6 +2,7 @@ using System;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ProFighter.Application.Common.Interfaces;
@@ -27,6 +28,8 @@ public class RekazWebhookProcessor : IRekazWebhookProcessor
         _logger = logger;
     }
 
+    [Queue("webhooks")]
+    [AutomaticRetry(Attempts = 3, DelaysInSeconds = new[] { 30, 120, 600 }, OnAttemptsExceeded = AttemptsExceededAction.Fail)]
     public async Task ProcessAsync(Guid webhookEventId, CancellationToken ct = default)
     {
         var entry = await _context.RekazWebhookInboxEntries.FirstOrDefaultAsync(w => w.Id == webhookEventId, ct);
@@ -34,44 +37,45 @@ public class RekazWebhookProcessor : IRekazWebhookProcessor
 
         var payload = JsonSerializer.Deserialize<JsonElement>(entry.RawPayload);
 
-		if (entry.EventName.StartsWith("Subscription", StringComparison.Ordinal))
-		{
-			var dataId = ExtractDataId(payload);
-			await _subscriptionEventHandler.HandleAsync(dataId, entry.EventName, ct);
-		}
-		else if (entry.EventName.StartsWith("Transaction", StringComparison.Ordinal) || entry.EventName.StartsWith("Invoice", StringComparison.Ordinal))
-		{
-			var dataId = ExtractDataId(payload);
-			await _transactionEventHandler.HandleAsync(dataId, entry.EventName, ct);
-		}
-		else
+        if (entry.EventName.StartsWith("Subscription", StringComparison.Ordinal))
         {
-            _logger.LogInformation("Rekaz webhook {EventName} ({EventId}) recorded, no handler implemented yet.", entry.EventName, webhookEventId);
+            var dataId = ExtractDataId(payload);
+            await _subscriptionEventHandler.HandleAsync(dataId, entry.EventName, entry.GymType, ct);
+        }
+        else if (entry.EventName.StartsWith("Transaction", StringComparison.Ordinal) || entry.EventName.StartsWith("Invoice", StringComparison.Ordinal))
+        {
+            var dataId = ExtractDataId(payload);
+            await _transactionEventHandler.HandleAsync(dataId, entry.EventName, entry.GymType, ct);
+        }
+        else
+        {
+            _logger.LogInformation("Rekaz webhook {EventName} ({EventId}) recorded for GymType {GymType}, no handler implemented yet.", entry.EventName, webhookEventId, entry.GymType);
         }
 
         entry.MarkProcessed();
         await _context.SaveChangesAsync(ct);
     }
-	private static bool TryGetPropertyCI(JsonElement element, string propertyName, out JsonElement value)
-	{
-		foreach (var property in element.EnumerateObject())
-		{
-			if (string.Equals(property.Name, propertyName, StringComparison.OrdinalIgnoreCase))
-			{
-				value = property.Value;
-				return true;
-			}
-		}
-		value = default;
-		return false;
-	}
 
-	private static Guid ExtractDataId(JsonElement payload)
-	{
-		if (!TryGetPropertyCI(payload, "Data", out var data))
-			throw new InvalidOperationException("Webhook payload missing 'data' property.");
-		if (!TryGetPropertyCI(data, "Id", out var id))
-			throw new InvalidOperationException("Webhook payload missing 'data.id' property.");
-		return Guid.Parse(id.GetString()!);
-	}
+    private static bool TryGetPropertyCI(JsonElement element, string propertyName, out JsonElement value)
+    {
+        foreach (var property in element.EnumerateObject())
+        {
+            if (string.Equals(property.Name, propertyName, StringComparison.OrdinalIgnoreCase))
+            {
+                value = property.Value;
+                return true;
+            }
+        }
+        value = default;
+        return false;
+    }
+
+    private static Guid ExtractDataId(JsonElement payload)
+    {
+        if (!TryGetPropertyCI(payload, "Data", out var data))
+            throw new InvalidOperationException("Webhook payload missing 'data' property.");
+        if (!TryGetPropertyCI(data, "Id", out var id))
+            throw new InvalidOperationException("Webhook payload missing 'data.id' property.");
+        return Guid.Parse(id.GetString()!);
+    }
 }

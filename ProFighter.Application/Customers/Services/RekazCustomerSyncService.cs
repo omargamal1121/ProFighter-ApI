@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using ProFighter.Application.Common.Interfaces;
 using ProFighter.Domain.Entities;
 using ProFighter.Domain.Enums;
@@ -14,24 +16,41 @@ public class RekazCustomerSyncService : IRekazCustomerSyncService
     private readonly IApplicationDbContext _context;
     private readonly IRekazClientFactory _clientFactory;
     private readonly ICustomerProvisioningService _provisioningService;
+    private readonly ILogger<RekazCustomerSyncService> _logger;
 
     public RekazCustomerSyncService(
         IApplicationDbContext context,
         IRekazClientFactory clientFactory,
-        ICustomerProvisioningService provisioningService)
+        ICustomerProvisioningService provisioningService,
+        ILogger<RekazCustomerSyncService> logger)
     {
         _context = context;
         _clientFactory = clientFactory;
         _provisioningService = provisioningService;
+        _logger = logger;
     }
 
-    public Task<Customer> EnsureLocalCustomerAsync(Guid rekazCustomerId, CancellationToken ct)
+    public Task<Customer?> EnsureLocalCustomerAsync(Guid rekazCustomerId, CancellationToken ct)
     {
-        return EnsureLocalCustomerAsync(rekazCustomerId, GymType.ProFighter, ct);
+        return EnsureLocalCustomerAsync(rekazCustomerId, GymType.ProFighter, null, ct);
     }
 
-    public async Task<Customer> EnsureLocalCustomerAsync(Guid rekazCustomerId, GymType gymType, CancellationToken ct = default)
+    public Task<Customer?> EnsureLocalCustomerAsync(Guid rekazCustomerId, GymType gymType, CancellationToken ct = default)
     {
+        return EnsureLocalCustomerAsync(rekazCustomerId, gymType, null, ct);
+    }
+
+    public async Task<Customer?> EnsureLocalCustomerAsync(
+        Guid rekazCustomerId,
+        GymType gymType,
+        ISet<Guid>? negativeCache,
+        CancellationToken ct = default)
+    {
+        if (negativeCache != null && negativeCache.Contains(rekazCustomerId))
+        {
+            return null;
+        }
+
         // 1. Check ChangeTracker.Local first for unsaved, already-tracked entities
         var trackedCustomer = _context.Customers.Local
             .FirstOrDefault(c => c.RekazCustomerId == rekazCustomerId && c.GymType == gymType);
@@ -52,8 +71,20 @@ public class RekazCustomerSyncService : IRekazCustomerSyncService
 
         // 3. Fetch from Rekaz using gym-specific client and provision
         var rekazClient = _clientFactory.GetClient(gymType);
-        var rekazCustomer = await rekazClient.Customers.GetCustomerByIdAsync(rekazCustomerId, ct)
-            ?? throw new InvalidOperationException($"Rekaz customer {rekazCustomerId} could not be found via Rekaz API for {gymType}.");
+        var rekazCustomer = await rekazClient.Customers.GetCustomerByIdAsync(rekazCustomerId, ct);
+        if (rekazCustomer is null)
+        {
+            _logger.LogWarning("Skipping RekazId={RekazId} for {GymType}: customer not found in Rekaz (404).", rekazCustomerId, gymType);
+            negativeCache?.Add(rekazCustomerId);
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(rekazCustomer.MobileNumber))
+        {
+            _logger.LogWarning("Skipping RekazId={RekazId} for {GymType}: missing or empty mobile number.", rekazCustomerId, gymType);
+            negativeCache?.Add(rekazCustomerId);
+            return null;
+        }
 
         var customer = await _provisioningService.ProvisionLocalCustomerAsync(
             rekazCustomer.Id,

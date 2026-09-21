@@ -20,11 +20,11 @@ public class SubscriptionTypeMapper : ISubscriptionTypeMapper
         _logger = logger;
     }
 
-    public SubscriptionType MapSubscriptionType(GymType gymType, Guid? productId)
+    public SubscriptionType MapSubscriptionType(GymType gymType, Guid? productId, ISet<Guid>? unmappedTracker = null)
     {
         if (!productId.HasValue || productId.Value == Guid.Empty)
         {
-            _logger.LogWarning("Missing or empty ProductId for {GymType}. Defaulting SubscriptionType to MartialArts.", gymType);
+            _logger.LogDebug("Missing or empty ProductId for {GymType}. Defaulting SubscriptionType to MartialArts.", gymType);
             return SubscriptionType.MartialArts;
         }
 
@@ -43,11 +43,19 @@ public class SubscriptionTypeMapper : ISubscriptionTypeMapper
             {
                 return parsedType;
             }
-            _logger.LogWarning("Unrecognized SubscriptionType '{RawType}' configured for ProductId {ProductId} in {GymType}. Defaulting to MartialArts.", rawType, productId.Value, gymType);
+            _logger.LogDebug("Unrecognized SubscriptionType '{RawType}' configured for ProductId {ProductId} in {GymType}. Defaulting to MartialArts.", rawType, productId.Value, gymType);
         }
         else
         {
-            _logger.LogWarning("Unmapped ProductId {ProductId} for {GymType}. Defaulting SubscriptionType to MartialArts.", productId.Value, gymType);
+            var isNew = unmappedTracker != null ? unmappedTracker.Add(productId.Value) : true;
+            if (isNew)
+            {
+                _logger.LogWarning("Unmapped ProductId {ProductId} for {GymType}. Defaulting SubscriptionType to MartialArts.", productId.Value, gymType);
+            }
+            else
+            {
+                _logger.LogDebug("Unmapped ProductId {ProductId} for {GymType}. Defaulting SubscriptionType to MartialArts.", productId.Value, gymType);
+            }
         }
 
         return SubscriptionType.MartialArts;

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using ProFighter.Domain.Enums;
 
 namespace ProFighter.Application.Common.Interfaces;
@@ -11,7 +12,7 @@ public interface ISubscriptionTypeMapper
 {
     /// <summary>
     /// Maps a Rekaz productId (or priceId) and GymType to a <see cref="SubscriptionType"/>.
-    /// If unmapped, logs a warning and returns default (<see cref="SubscriptionType.MartialArts"/>).
+    /// If unmapped, logs a warning for new distinct product IDs and returns default (<see cref="SubscriptionType.MartialArts"/>).
     /// </summary>
-    SubscriptionType MapSubscriptionType(GymType gymType, Guid? productId);
+    SubscriptionType MapSubscriptionType(GymType gymType, Guid? productId, ISet<Guid>? unmappedTracker = null);
 }

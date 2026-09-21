@@ -31,6 +31,9 @@ public class RekazWebhookInboxEntryConfiguration : IEntityTypeConfiguration<Reka
         builder.Property(e => e.CreatedAt)
             .IsRequired();
 
+        builder.Property(e => e.GymType)
+            .HasDefaultValue(Domain.Enums.GymType.ProFighter);
+
         // Index on (Processed, CreatedAt)
         builder.HasIndex(e => new { e.Processed, e.CreatedAt });
     }

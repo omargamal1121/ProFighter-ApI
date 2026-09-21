@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using ProFighter.Application.Common.Interfaces;
 using ProFighter.Domain.Entities;
 using ProFighter.Domain.Enums;
@@ -12,15 +13,18 @@ public class CustomerProvisioningService : ICustomerProvisioningService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IApplicationDbContext _context;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<CustomerProvisioningService> _logger;
 
     public CustomerProvisioningService(
         UserManager<ApplicationUser> userManager,
         IApplicationDbContext context,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ILogger<CustomerProvisioningService> logger)
     {
         _userManager = userManager;
         _context = context;
         _configuration = configuration;
+        _logger = logger;
     }
 
     public async Task<Guid> ProvisionFromRekazAsync(
@@ -128,8 +132,13 @@ public class CustomerProvisioningService : ICustomerProvisioningService
 
                 user = await CreateIdentityUserAsync(generatedUserName, mobileNumber, email, defaultPassword, mustChangePassword: true, ct);
             }
-            catch (DbUpdateException ex) when (IsDuplicateUserNameError(ex))
+            catch (Exception ex) when (ex is DbUpdateException dbEx && IsDuplicateUserNameError(dbEx) ||
+                                      ex is InvalidOperationException invEx && IsDuplicateUserNameMessage(invEx))
             {
+                _logger.LogWarning("Duplicate username conflict during customer provisioning for username {UserName}, attempting re-lookup.", generatedUserName);
+
+                DetachLocalCustomers();
+
                 user = await FindByNameWithRetryAsync(generatedUserName, ct)
                     ?? throw new InvalidOperationException(
                         $"Duplicate username conflict for {generatedUserName}, but user not found on re-lookup.", ex);
@@ -146,6 +155,20 @@ public class CustomerProvisioningService : ICustomerProvisioningService
         _context.Customers.Add(customer);
 
         return customer;
+    }
+
+    private bool IsDuplicateUserNameMessage(InvalidOperationException ex)
+    {
+        return ex.Message.Contains("already taken", StringComparison.OrdinalIgnoreCase) ||
+               ex.Message.Contains("DuplicateUserName", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void DetachLocalCustomers()
+    {
+        foreach (var entity in _context.Customers.Local.ToList())
+        {
+            _context.Customers.Entry(entity).State = EntityState.Detached;
+        }
     }
 
     private bool IsDuplicateUserNameError(DbUpdateException ex)

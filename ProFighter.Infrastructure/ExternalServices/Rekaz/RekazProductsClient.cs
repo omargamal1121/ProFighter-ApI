@@ -1,18 +1,16 @@
+using System;
+using System.Diagnostics;
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using ProFighter.Application.Common.Exceptions;
 using ProFighter.Application.Common.Interfaces;
 using ProFighter.Application.Common.Models;
 using ProFighter.Infrastructure.ExternalServices.Rekaz.Dtos;
-using System.Net.Http.Json;
-using System.Text.Json;
 
 namespace ProFighter.Infrastructure.ExternalServices.Rekaz;
 
-/// <summary>
-/// Typed HttpClient implementation of <see cref="IRekazProductsClient"/>.
-/// Registered via <c>AddHttpClient&lt;IRekazProductsClient, RekazProductsClient&gt;()</c>.
-/// </summary>
 public sealed class RekazProductsClient : IRekazProductsClient
 {
     private const string ProductsEndpoint = "/api/public/products";
@@ -30,7 +28,6 @@ public sealed class RekazProductsClient : IRekazProductsClient
         _logger = logger;
     }
 
-    /// <inheritdoc/>
     public async Task<RekazProductsResult> GetProductsAsync(
         RekazProductsQuery query,
         CancellationToken ct = default)
@@ -38,21 +35,14 @@ public sealed class RekazProductsClient : IRekazProductsClient
         var qs = BuildQueryString(query);
         var requestUri = $"{ProductsEndpoint}{qs}";
 
-        _logger.LogInformation(
-            "Rekaz GetProducts → {Endpoint}{Query}",
-            ProductsEndpoint, qs);
-
         using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
-
-        // Authorization: Basic <value used as-is — not re-encoded>
-     
         request.Headers.TryAddWithoutValidation("Accept", "application/json");
 
+        var sw = Stopwatch.StartNew();
         using var response = await _httpClient.SendAsync(request, ct);
+        sw.Stop();
 
-        _logger.LogInformation(
-            "Rekaz GetProducts ← {StatusCode} ({StatusCodeInt})",
-            response.StatusCode, (int)response.StatusCode);
+        LogHttpCall("GET", requestUri, response.StatusCode, sw.ElapsedMilliseconds);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -66,10 +56,19 @@ public sealed class RekazProductsClient : IRekazProductsClient
         return MapToResult(dto);
     }
 
-    /// <summary>
-    /// Builds the query string from <paramref name="q"/>.
-    /// Only non-null / non-default-sentinel fields are included.
-    /// </summary>
+    private void LogHttpCall(string method, string path, HttpStatusCode statusCode, long elapsedMs)
+    {
+        var isExpected = (int)statusCode >= 200 && (int)statusCode <= 299;
+        if (isExpected)
+        {
+            _logger.LogDebug("Rekaz HTTP {Method} {Path} → {StatusCode} ({ElapsedMs} ms)", method, path, (int)statusCode, elapsedMs);
+        }
+        else
+        {
+            _logger.LogWarning("Rekaz HTTP {Method} {Path} → {StatusCode} ({ElapsedMs} ms)", method, path, (int)statusCode, elapsedMs);
+        }
+    }
+
     private static string BuildQueryString(RekazProductsQuery q)
     {
         var parts = new List<string>
@@ -93,10 +92,6 @@ public sealed class RekazProductsClient : IRekazProductsClient
         return "?" + string.Join("&", parts);
     }
 
-    // -----------------------------------------------------------------------
-    // Mapping — Infrastructure DTOs → Application models
-    // -----------------------------------------------------------------------
-
     private static RekazProductsResult MapToResult(RekazProductsResponse dto) =>
         new(
             Items: dto.Items.Select(MapProduct).ToList(),
@@ -111,7 +106,7 @@ public sealed class RekazProductsClient : IRekazProductsClient
             ImageUrl: p.FeaturedImage ?? p.Images.FirstOrDefault(),
             IsOutOfStock: p.IsOutOfStock,
             StockQuantity: p.StockQuantity,
-            ProductType: (RekazProductType)p.Type,   // 0=Reservation, 1=Subscription, 2=Merchandise
+            ProductType: (RekazProductType)p.Type,
             TypeString: p.TypeString,
             Prices: p.Pricing.Select(MapPrice).ToList()
         );
@@ -124,6 +119,6 @@ public sealed class RekazProductsClient : IRekazProductsClient
             DiscountedAmount: pr.DiscountedAmount,
             DiscountValidFrom: pr.DiscountValidFrom,
             DiscountValidUntil: pr.DiscountValidUntil,
-            IsRecurring: pr.Type == 2   // PriceType: 2 = Recurring
+            IsRecurring: pr.Type == 2
         );
 }

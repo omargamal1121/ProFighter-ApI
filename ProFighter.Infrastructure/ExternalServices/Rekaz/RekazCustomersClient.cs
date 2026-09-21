@@ -1,23 +1,19 @@
+using System;
+using System.Diagnostics;
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using ProFighter.Application.Common.Exceptions;
 using ProFighter.Application.Common.Interfaces;
 using ProFighter.Application.Common.Models;
 using ProFighter.Infrastructure.ExternalServices.Rekaz.Dtos;
-using System.Net;
-using System.Net.Http.Json;
-using System.Text.Json;
 
 namespace ProFighter.Infrastructure.ExternalServices.Rekaz;
 
-/// <summary>
-/// Typed HttpClient implementation of <see cref="IRekazCustomersClient"/>.
-/// Uses the shared "RekazClient" named HttpClient (base address + auth headers
-/// pre-configured in DependencyInjection.cs).
-/// </summary>
 public sealed class RekazCustomersClient : IRekazCustomersClient
 {
     private const string CustomersEndpoint = "/api/public/customers";
-
     private const int FixedCustomerType = 1;
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -41,9 +37,6 @@ public sealed class RekazCustomersClient : IRekazCustomersClient
         if (string.IsNullOrWhiteSpace(request.MobileNumber))
             throw new ArgumentException("Customer mobile number is required.", nameof(request));
 
-        _logger.LogInformation("Rekaz CreateCustomer → POST {Endpoint}", CustomersEndpoint);
-
-    
         var body = new
         {
             name         = request.Name,
@@ -64,11 +57,11 @@ public sealed class RekazCustomersClient : IRekazCustomersClient
         };
         httpRequest.Headers.TryAddWithoutValidation("Accept", "application/json");
 
+        var sw = Stopwatch.StartNew();
         using var response = await _httpClient.SendAsync(httpRequest, ct);
+        sw.Stop();
 
-        _logger.LogInformation(
-            "Rekaz CreateCustomer ← {StatusCode} ({StatusCodeInt})",
-            response.StatusCode, (int)response.StatusCode);
+        LogHttpCall("POST", CustomersEndpoint, response.StatusCode, sw.ElapsedMilliseconds);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -82,11 +75,6 @@ public sealed class RekazCustomersClient : IRekazCustomersClient
         return dto.CustomerId;
     }
 
-    // -------------------------------------------------------------------------
-    // GetCustomersAsync
-    // -------------------------------------------------------------------------
-
-    /// <inheritdoc/>
     public async Task<RekazCustomersListResult> GetCustomersAsync(
         RekazCustomersQuery query,
         CancellationToken ct = default)
@@ -94,16 +82,14 @@ public sealed class RekazCustomersClient : IRekazCustomersClient
         var qs = BuildListQueryString(query);
         var requestUri = $"{CustomersEndpoint}{qs}";
 
-        _logger.LogInformation("Rekaz GetCustomers → GET {Endpoint}{Query}", CustomersEndpoint, qs);
-
         using var httpRequest = new HttpRequestMessage(HttpMethod.Get, requestUri);
         httpRequest.Headers.TryAddWithoutValidation("Accept", "application/json");
 
+        var sw = Stopwatch.StartNew();
         using var response = await _httpClient.SendAsync(httpRequest, ct);
+        sw.Stop();
 
-        _logger.LogInformation(
-            "Rekaz GetCustomers ← {StatusCode} ({StatusCodeInt})",
-            response.StatusCode, (int)response.StatusCode);
+        LogHttpCall("GET", requestUri, response.StatusCode, sw.ElapsedMilliseconds);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -120,29 +106,21 @@ public sealed class RekazCustomersClient : IRekazCustomersClient
         );
     }
 
-    // -------------------------------------------------------------------------
-    // GetCustomerByIdAsync
-    // -------------------------------------------------------------------------
-
-    /// <inheritdoc/>
     public async Task<RekazCustomerResult?> GetCustomerByIdAsync(
         Guid id,
         CancellationToken ct = default)
     {
         var requestUri = $"{CustomersEndpoint}/{id}";
 
-        _logger.LogInformation("Rekaz GetCustomerById → GET {Endpoint}", requestUri);
-
         using var httpRequest = new HttpRequestMessage(HttpMethod.Get, requestUri);
         httpRequest.Headers.TryAddWithoutValidation("Accept", "application/json");
 
+        var sw = Stopwatch.StartNew();
         using var response = await _httpClient.SendAsync(httpRequest, ct);
+        sw.Stop();
 
-        _logger.LogInformation(
-            "Rekaz GetCustomerById ← {StatusCode} ({StatusCodeInt})",
-            response.StatusCode, (int)response.StatusCode);
+        LogHttpCall("GET", requestUri, response.StatusCode, sw.ElapsedMilliseconds, isByIdLookup: true);
 
-        // 404 is an expected "not found" case — return null instead of throwing.
         if (response.StatusCode == HttpStatusCode.NotFound)
             return null;
 
@@ -158,7 +136,6 @@ public sealed class RekazCustomersClient : IRekazCustomersClient
         return MapCustomer(dto);
     }
 
-    /// <inheritdoc/>
     public async Task<RekazCustomerResult?> GetCustomerByMobileNumberAsync(
         string mobileNumber,
         CancellationToken ct = default)
@@ -175,14 +152,19 @@ public sealed class RekazCustomersClient : IRekazCustomersClient
         return list.Items.FirstOrDefault();
     }
 
-    // -------------------------------------------------------------------------
-    // Private helpers
-    // -------------------------------------------------------------------------
+    private void LogHttpCall(string method, string path, HttpStatusCode statusCode, long elapsedMs, bool isByIdLookup = false)
+    {
+        var isExpected = (int)statusCode >= 200 && (int)statusCode <= 299 || (isByIdLookup && statusCode == HttpStatusCode.NotFound);
+        if (isExpected)
+        {
+            _logger.LogDebug("Rekaz HTTP {Method} {Path} → {StatusCode} ({ElapsedMs} ms)", method, path, (int)statusCode, elapsedMs);
+        }
+        else
+        {
+            _logger.LogWarning("Rekaz HTTP {Method} {Path} → {StatusCode} ({ElapsedMs} ms)", method, path, (int)statusCode, elapsedMs);
+        }
+    }
 
-    /// <summary>
-    /// Builds the query string for GET /api/public/customers.
-    /// MaxResultCount is clamped to the valid range 1–100.
-    /// </summary>
     private static string BuildListQueryString(RekazCustomersQuery q)
     {
         var clampedMax = Math.Clamp(q.MaxResultCount, 1, 100);
@@ -201,8 +183,6 @@ public sealed class RekazCustomersClient : IRekazCustomersClient
 
         return "?" + string.Join("&", parts);
     }
-
-    // Mapping — Infrastructure DTOs → Application models
 
     private static RekazCustomerResult MapCustomer(RekazCustomerDto dto) =>
         new(

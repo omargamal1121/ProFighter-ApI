@@ -29,7 +29,7 @@ public class UnitOfWork : IUnitOfWork
                 return await ExecuteWithExceptionTranslation(operation, ct);
             }
 
-            await using var transaction = await _context.Database.BeginTransactionAsync(ct);
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted, ct);
             try
             {
                 var result = await ExecuteWithExceptionTranslation(operation, ct);
@@ -39,6 +39,14 @@ public class UnitOfWork : IUnitOfWork
             }
             catch (Exception ex)
             {
+                var addedEntries = _context.ChangeTracker.Entries()
+                    .Where(e => e.State == EntityState.Added)
+                    .ToList();
+                foreach (var entry in addedEntries)
+                {
+                    entry.State = EntityState.Detached;
+                }
+
                 _logger.LogError(ex, "Transaction failed, rolling back.");
                 await transaction.RollbackAsync(ct);
                 throw;

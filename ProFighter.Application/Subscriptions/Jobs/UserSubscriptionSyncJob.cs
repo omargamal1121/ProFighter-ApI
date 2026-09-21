@@ -99,7 +99,7 @@ public class UserSubscriptionSyncJob
                             id: Guid.NewGuid(),
                             customerId: customer.Id,
                             rekazSubscriptionId: rekazSub.Id,
-                            type: SubscriptionType.MartialArts,
+                            type: null,
                             startDate: rekazSub.StartAt,
                             price: rekazSub.TotalAmount,
                             name: rekazSub.Name,

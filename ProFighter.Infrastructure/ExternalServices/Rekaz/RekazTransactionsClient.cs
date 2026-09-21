@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -34,16 +35,14 @@ public class RekazTransactionsClient : IRekazTransactionsClient
     {
         var requestUri = $"{TransactionsEndpoint}/{id}";
 
-        _logger.LogInformation("Rekaz GetTransactionById → GET {Endpoint}", requestUri);
-
         using var httpRequest = new HttpRequestMessage(HttpMethod.Get, requestUri);
         httpRequest.Headers.TryAddWithoutValidation("Accept", "application/json");
 
+        var sw = Stopwatch.StartNew();
         using var response = await _httpClient.SendAsync(httpRequest, ct);
+        sw.Stop();
 
-        _logger.LogInformation(
-            "Rekaz GetTransactionById ← {StatusCode} ({StatusCodeInt})",
-            response.StatusCode, (int)response.StatusCode);
+        LogHttpCall("GET", requestUri, response.StatusCode, sw.ElapsedMilliseconds, isByIdLookup: true);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return null;
@@ -58,5 +57,18 @@ public class RekazTransactionsClient : IRekazTransactionsClient
             ?? throw new RekazApiException(response.StatusCode, "Empty response body on transaction fetch.");
 
         return dto;
+    }
+
+    private void LogHttpCall(string method, string path, HttpStatusCode statusCode, long elapsedMs, bool isByIdLookup = false)
+    {
+        var isExpected = (int)statusCode >= 200 && (int)statusCode <= 299 || (isByIdLookup && statusCode == HttpStatusCode.NotFound);
+        if (isExpected)
+        {
+            _logger.LogDebug("Rekaz HTTP {Method} {Path} → {StatusCode} ({ElapsedMs} ms)", method, path, (int)statusCode, elapsedMs);
+        }
+        else
+        {
+            _logger.LogWarning("Rekaz HTTP {Method} {Path} → {StatusCode} ({ElapsedMs} ms)", method, path, (int)statusCode, elapsedMs);
+        }
     }
 }

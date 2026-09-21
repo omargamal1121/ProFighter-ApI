@@ -29,10 +29,7 @@ public static class DependencyInjection
         services.Configure<RekazWebhookOptions>(
             configuration.GetSection(RekazWebhookOptions.SectionName));
 
-        services.Configure<RekazSubscriptionTypeOptions>(
-            configuration.GetSection(RekazSubscriptionTypeOptions.SectionName));
 
-        services.AddSingleton<ISubscriptionTypeMapper, SubscriptionTypeMapper>();
 
         // ── Per-gym multi-tenant options ──────────────────────────────────────────
         // Bound to the same "Rekaz" section.
@@ -130,6 +127,13 @@ public static class DependencyInjection
             options.ServerName = $"ProFighter-{Environment.MachineName}";
         });
 
+        services.AddHangfireServer(options =>
+        {
+            options.WorkerCount = 1;
+            options.Queues = new[] { "webhooks" };
+            options.ServerName = "webhooks";
+        });
+
         // Memory Cache for first-login tokens
         services.AddMemoryCache();
 
@@ -164,6 +168,7 @@ public static class DependencyInjection
         var firebaseCredentialsFileName = configuration["Firebase:CredentialsFileName"];
         if (!string.IsNullOrEmpty(firebaseCredentialsFileName))
         {
+           
             var path = Path.Combine(Directory.GetCurrentDirectory(), "Secrets", firebaseCredentialsFileName);
             if (File.Exists(path) && FirebaseAdmin.FirebaseApp.DefaultInstance == null)
             {

@@ -1,3 +1,5 @@
+using ProFighter.Domain.Enums;
+
 namespace ProFighter.Domain.Entities;
 
 public class RekazWebhookInboxEntry
@@ -8,6 +10,7 @@ public class RekazWebhookInboxEntry
     public string RawPayload { get; private set; }
     public bool Processed { get; private set; }
     public DateTime? ProcessedAt { get; private set; }
+    public GymType GymType { get; private set; } = GymType.ProFighter;
 
     // EF Core Constructor
     private RekazWebhookInboxEntry()
@@ -16,7 +19,7 @@ public class RekazWebhookInboxEntry
         RawPayload = null!;
     }
 
-    public RekazWebhookInboxEntry(Guid id, string eventName, string rawPayload)
+    public RekazWebhookInboxEntry(Guid id, string eventName, string rawPayload, GymType gymType = GymType.ProFighter)
     {
         if (string.IsNullOrWhiteSpace(eventName))
             throw new ArgumentException("Event name cannot be empty.", nameof(eventName));
@@ -26,6 +29,7 @@ public class RekazWebhookInboxEntry
         Id = id;
         EventName = eventName;
         RawPayload = rawPayload;
+        GymType = gymType;
         CreatedAt = DateTime.UtcNow;
         Processed = false;
         ProcessedAt = null;

@@ -142,7 +142,7 @@ public class SyncSubscriptionsCommandHandler : IRequestHandler<SyncSubscriptions
                 id: Guid.NewGuid(),
                 customerId: customer.Id,
                 rekazSubscriptionId: rekazSubscription.Id,
-                type: SubscriptionType.MartialArts,
+                type: null,
                 startDate: rekazSubscription.StartAt,
                 price: rekazSubscription.TotalAmount,
                 name: rekazSubscription.Name);

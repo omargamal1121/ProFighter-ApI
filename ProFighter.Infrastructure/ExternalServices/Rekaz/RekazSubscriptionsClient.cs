@@ -1,19 +1,19 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using ProFighter.Application.Common.Exceptions;
 using ProFighter.Application.Common.Interfaces;
 using ProFighter.Application.Common.Models;
 using ProFighter.Infrastructure.ExternalServices.Rekaz.Dtos;
-using System.Net;
-using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace ProFighter.Infrastructure.ExternalServices.Rekaz;
 
-/// <summary>
-/// Typed HttpClient implementation of <see cref="IRekazSubscriptionsClient"/>.
-/// Uses the shared "RekazClient" named HttpClient.
-/// </summary>
 public sealed class RekazSubscriptionsClient : IRekazSubscriptionsClient
 {
     private const string SubscriptionsEndpoint = "/api/public/subscriptions";
@@ -34,12 +34,10 @@ public sealed class RekazSubscriptionsClient : IRekazSubscriptionsClient
         _logger = logger;
     }
 
-    /// <inheritdoc/>
     public async Task<RekazSubscriptionCreatedResult> CreateSubscriptionAsync(
         CreateRekazSubscriptionRequest request,
         CancellationToken ct = default)
     {
-        // 1. Validation
         if (request.CustomerId.HasValue && request.NewCustomerDetails != null)
             throw new ArgumentException("Cannot specify both CustomerId and NewCustomerDetails. Choose one.", nameof(request));
 
@@ -49,9 +47,6 @@ public sealed class RekazSubscriptionsClient : IRekazSubscriptionsClient
         if (request.Items == null || request.Items.Count == 0)
             throw new ArgumentException("Subscription must contain at least 1 item.", nameof(request));
 
-        _logger.LogInformation("Rekaz CreateSubscription → POST {Endpoint}", SubscriptionsEndpoint);
-
-        // 2. Build Payload
         object? customerDetails = null;
         if (request.NewCustomerDetails != null)
         {
@@ -87,11 +82,11 @@ public sealed class RekazSubscriptionsClient : IRekazSubscriptionsClient
         };
         httpRequest.Headers.TryAddWithoutValidation("Accept", "application/json");
 
+        var sw = Stopwatch.StartNew();
         using var response = await _httpClient.SendAsync(httpRequest, ct);
+        sw.Stop();
 
-        _logger.LogInformation(
-            "Rekaz CreateSubscription ← {StatusCode} ({StatusCodeInt})",
-            response.StatusCode, (int)response.StatusCode);
+        LogHttpCall("POST", SubscriptionsEndpoint, response.StatusCode, sw.ElapsedMilliseconds);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -105,7 +100,6 @@ public sealed class RekazSubscriptionsClient : IRekazSubscriptionsClient
         return new RekazSubscriptionCreatedResult(dto.InvoiceId, dto.PaymentLink);
     }
 
-    /// <inheritdoc/>
     public async Task<RekazSubscriptionsListResult> GetSubscriptionsAsync(
         RekazSubscriptionsQuery query,
         CancellationToken ct = default)
@@ -113,16 +107,14 @@ public sealed class RekazSubscriptionsClient : IRekazSubscriptionsClient
         var qs = BuildListQueryString(query);
         var requestUri = $"{SubscriptionsEndpoint}{qs}";
 
-        _logger.LogInformation("Rekaz GetSubscriptions → GET {Endpoint}{Query}", SubscriptionsEndpoint, qs);
-
         using var httpRequest = new HttpRequestMessage(HttpMethod.Get, requestUri);
         httpRequest.Headers.TryAddWithoutValidation("Accept", "application/json");
 
+        var sw = Stopwatch.StartNew();
         using var response = await _httpClient.SendAsync(httpRequest, ct);
+        sw.Stop();
 
-        _logger.LogInformation(
-            "Rekaz GetSubscriptions ← {StatusCode} ({StatusCodeInt})",
-            response.StatusCode, (int)response.StatusCode);
+        LogHttpCall("GET", requestUri, response.StatusCode, sw.ElapsedMilliseconds);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -139,23 +131,20 @@ public sealed class RekazSubscriptionsClient : IRekazSubscriptionsClient
         );
     }
 
-    /// <inheritdoc/>
     public async Task<RekazSubscriptionResult?> GetSubscriptionByIdAsync(
         Guid id,
         CancellationToken ct = default)
     {
         var requestUri = $"{SubscriptionsEndpoint}/{id}";
 
-        _logger.LogInformation("Rekaz GetSubscriptionById → GET {Endpoint}", requestUri);
-
         using var httpRequest = new HttpRequestMessage(HttpMethod.Get, requestUri);
         httpRequest.Headers.TryAddWithoutValidation("Accept", "application/json");
 
+        var sw = Stopwatch.StartNew();
         using var response = await _httpClient.SendAsync(httpRequest, ct);
+        sw.Stop();
 
-        _logger.LogInformation(
-            "Rekaz GetSubscriptionById ← {StatusCode} ({StatusCodeInt})",
-            response.StatusCode, (int)response.StatusCode);
+        LogHttpCall("GET", requestUri, response.StatusCode, sw.ElapsedMilliseconds, isByIdLookup: true);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return null;
@@ -170,6 +159,75 @@ public sealed class RekazSubscriptionsClient : IRekazSubscriptionsClient
             ?? throw new RekazApiException(response.StatusCode, "Empty response body on subscription fetch.");
 
         return MapSubscription(dto);
+    }
+
+    public async Task<List<RekazSubscriptionResult>> GetSubscriptionsByCustomerAsync(
+        Guid customerId,
+        CancellationToken ct = default)
+    {
+        var allItems = new List<RekazSubscriptionResult>();
+        var skipCount = 0;
+        const int pageSize = 100;
+
+        while (true)
+        {
+            var query = new RekazSubscriptionsQuery(
+                CustomerId: customerId,
+                MaxResultCount: pageSize,
+                SkipCount: skipCount);
+
+            RekazSubscriptionsListResult result;
+            try
+            {
+                result = await GetSubscriptionsAsync(query, ct);
+            }
+            catch (RekazApiException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                _logger.LogWarning("Rekaz rate limit hit (429) for CustomerId={CustomerId} at SkipCount={SkipCount}. Retrying after delay.", customerId, skipCount);
+                await Task.Delay(TimeSpan.FromMilliseconds(200), ct);
+                result = await GetSubscriptionsAsync(query, ct);
+            }
+
+            if (result.Items == null || result.Items.Count == 0)
+            {
+                if (skipCount == 0) break;
+            }
+
+            if (result.Items != null && result.Items.Count > 0)
+            {
+                var mismatched = result.Items.FirstOrDefault(i => i.CustomerId != customerId);
+                if (mismatched != null)
+                {
+                    _logger.LogWarning(
+                        "CustomerId filter ignored by Rekaz. Requested CustomerId: {RequestedCustomerId}, but API returned item with CustomerId: {MismatchedCustomerId}",
+                        customerId, mismatched.CustomerId);
+                    throw new RekazCustomerFilterNotSupportedException(customerId, mismatched.CustomerId);
+                }
+
+                allItems.AddRange(result.Items);
+            }
+
+            skipCount += pageSize;
+            if (skipCount >= result.TotalCount)
+                break;
+
+            await Task.Delay(TimeSpan.FromMilliseconds(50), ct);
+        }
+
+        return allItems;
+    }
+
+    private void LogHttpCall(string method, string path, HttpStatusCode statusCode, long elapsedMs, bool isByIdLookup = false)
+    {
+        var isExpected = (int)statusCode >= 200 && (int)statusCode <= 299 || (isByIdLookup && statusCode == HttpStatusCode.NotFound);
+        if (isExpected)
+        {
+            _logger.LogDebug("Rekaz HTTP {Method} {Path} → {StatusCode} ({ElapsedMs} ms)", method, path, (int)statusCode, elapsedMs);
+        }
+        else
+        {
+            _logger.LogWarning("Rekaz HTTP {Method} {Path} → {StatusCode} ({ElapsedMs} ms)", method, path, (int)statusCode, elapsedMs);
+        }
     }
 
     private static string BuildListQueryString(RekazSubscriptionsQuery q)
@@ -199,7 +257,6 @@ public sealed class RekazSubscriptionsClient : IRekazSubscriptionsClient
 
         if (q.Statuses != null && q.Statuses.Count > 0)
         {
-            // Statuses are now strings (e.g., "Pending", "Active")
             parts.AddRange(q.Statuses.Select(s => $"Statuses={Uri.EscapeDataString(s)}"));
         }
 
@@ -221,61 +278,6 @@ public sealed class RekazSubscriptionsClient : IRekazSubscriptionsClient
             parts.Add($"Sorting={Uri.EscapeDataString(q.Sorting)}");
 
         return "?" + string.Join("&", parts);
-    }
-
-    /// <inheritdoc/>
-    public async Task<List<RekazSubscriptionResult>> GetSubscriptionsByCustomerAsync(
-        Guid customerId,
-        CancellationToken ct = default)
-    {
-        _logger.LogInformation("Rekaz GetSubscriptionsByCustomer → GET {Endpoint} for CustomerId {CustomerId}", SubscriptionsEndpoint, customerId);
-
-        var allItems = new List<RekazSubscriptionResult>();
-        var skipCount = 0;
-        const int pageSize = 100;
-
-        while (true)
-        {
-            var query = new RekazSubscriptionsQuery(
-                CustomerId: customerId,
-                MaxResultCount: pageSize,
-                SkipCount: skipCount);
-
-            RekazSubscriptionsListResult result;
-            try
-            {
-                result = await GetSubscriptionsAsync(query, ct);
-            }
-            catch (RekazApiException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests)
-            {
-                _logger.LogWarning("Rekaz rate limit hit (429) for CustomerId={CustomerId} at SkipCount={SkipCount}. Retrying after delay.", customerId, skipCount);
-                await Task.Delay(TimeSpan.FromMilliseconds(200), ct);
-                result = await GetSubscriptionsAsync(query, ct);
-            }
-
-            if (result.Items == null || result.Items.Count == 0)
-                break;
-
-            // Check if any returned item has a different CustomerId
-            var mismatched = result.Items.FirstOrDefault(i => i.CustomerId != customerId);
-            if (mismatched != null)
-            {
-                _logger.LogWarning(
-                    "CustomerId filter ignored by Rekaz. Requested CustomerId: {RequestedCustomerId}, but API returned item with CustomerId: {MismatchedCustomerId}",
-                    customerId, mismatched.CustomerId);
-                throw new RekazCustomerFilterNotSupportedException(customerId, mismatched.CustomerId);
-            }
-
-            allItems.AddRange(result.Items);
-
-            skipCount += result.Items.Count;
-            if (skipCount >= result.TotalCount || result.Items.Count == 0)
-                break;
-
-            await Task.Delay(TimeSpan.FromMilliseconds(50), ct);
-        }
-
-        return allItems;
     }
 
     internal static RekazSubscriptionResult MapSubscription(RekazSubscriptionDto dto)

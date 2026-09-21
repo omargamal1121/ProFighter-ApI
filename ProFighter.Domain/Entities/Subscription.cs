@@ -10,7 +10,7 @@ public class Subscription : BaseEntity
     public Guid? RekazInvoiceId { get; private set; }
     public string? PaymentLink { get; private set; }
     public string? Name { get; private set; }
-    public SubscriptionType Type { get; private set; }
+    public SubscriptionType? Type { get; private set; }
     public string Status { get; private set; }
     public DateTime StartDate { get; private set; }
     public DateTime? EndDate { get; private set; }
@@ -24,9 +24,9 @@ public class Subscription : BaseEntity
         Guid id,
         Guid customerId,
         Guid rekazSubscriptionId,
-        SubscriptionType type,
-        DateTime startDate,
-        decimal price,
+        SubscriptionType? type = null,
+        DateTime startDate = default,
+        decimal price = 0,
         Guid? rekazInvoiceId = null,
         string? paymentLink = null,
         string? name = null,

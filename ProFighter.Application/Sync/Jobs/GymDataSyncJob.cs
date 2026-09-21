@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -92,10 +93,10 @@ public sealed class GymDataSyncJob
             _logger.LogInformation(
                 "GymDataSyncJob completed for {GymType} in {Elapsed:g}. " +
                 "Customers — synced: {CSync}, skipped: {CSkip}, failed: {CFail}. " +
-                "Subscriptions — synced: {SSync}, skipped: {SSkip}, failed: {SFail}.",
+                "Subscriptions — created: {SCreated}, updated: {SUpdated}, unchanged: {SUnchanged}, skipped: {SSkip}, failed: {SFail}.",
                 gymType, elapsed,
                 customerStats.Synced, customerStats.Skipped, customerStats.Failed,
-                subscriptionStats.Synced, subscriptionStats.Skipped, subscriptionStats.Failed);
+                subscriptionStats.Created, subscriptionStats.Updated, subscriptionStats.Unchanged, subscriptionStats.Skipped, subscriptionStats.Failed);
         }
         catch (Exception ex)
         {
@@ -129,13 +130,13 @@ public sealed class GymDataSyncJob
             }
             catch (ProFighter.Application.Common.Exceptions.RekazApiException ex) when (ex.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
             {
-                _logger.LogWarning("Rekaz rate limit hit (429) for {GymType} at SkipCount={SkipCount}. Consider increasing InterPageDelay.", gymType, skipCount);
+                _logger.LogWarning("Rekaz rate limit hit (429) for {GymType} at SkipCount={SkipCount}. Retrying after delay.", gymType, skipCount);
                 await Task.Delay(InterPageDelay * 4, ct);
                 var query  = new RekazCustomersQuery(MaxResultCount: PageSize, SkipCount: skipCount);
                 result = await rekazClient.Customers.GetCustomersAsync(query, ct);
             }
 
-            if (result.Items.Count == 0)
+            if (result.Items == null || result.Items.Count == 0)
                 break;
 
             foreach (var rekazCustomer in result.Items)
@@ -152,20 +153,20 @@ public sealed class GymDataSyncJob
                 {
                     failed++;
                     _logger.LogError(ex,
-                        "Failed to upsert customer RekazId={RekazId} ({Name}) for {GymType}.",
-                        rekazCustomer.Id, rekazCustomer.Name, gymType);
+                        "Failed to upsert customer RekazId={RekazId} for {GymType}.",
+                        rekazCustomer.Id, gymType);
                 }
             }
 
             await _context.SaveChangesAsync(ct);
             ((DbContext)_context).ChangeTracker.Clear();
 
-            skipCount += result.Items.Count;
+            skipCount += PageSize;
 
-            _logger.LogInformation("Fetched customer page starting at {SkipCount}, received {Count}/{TotalCount} items for {GymType}.", 
-                skipCount - result.Items.Count, result.Items.Count, result.TotalCount, gymType);
+            _logger.LogDebug("Fetched customer page starting at {SkipCount}, received {Count}/{TotalCount} items for {GymType}.", 
+                skipCount - PageSize, result.Items.Count, result.TotalCount, gymType);
 
-            if (skipCount >= result.TotalCount || result.Items.Count == 0)
+            if (skipCount >= result.TotalCount)
                 break;
 
             await Task.Delay(InterPageDelay, ct);
@@ -186,8 +187,8 @@ public sealed class GymDataSyncJob
         if (string.IsNullOrWhiteSpace(rekazCustomer.MobileNumber))
         {
             _logger.LogWarning(
-                "Skipping customer RekazId={RekazId} ({Name}) for {GymType}: missing or empty mobile number.",
-                rekazCustomer.Id, rekazCustomer.Name, gymType);
+                "Skipping customer RekazId={RekazId} for {GymType}: missing or empty mobile number.",
+                rekazCustomer.Id, gymType);
             return SyncItemResult.Skipped;
         }
 
@@ -220,15 +221,23 @@ public sealed class GymDataSyncJob
         return SyncItemResult.Synced;
     }
 
-    private async Task<(int Synced, int Skipped, int Failed)> SyncSubscriptionsAsync(
+    private async Task<(int Created, int Updated, int Unchanged, int Skipped, int Failed)> SyncSubscriptionsAsync(
         GymType gymType,
         IRekazClient rekazClient,
         CancellationToken ct)
     {
-        var synced = 0;
-        var skipped = 0;
-        var failed = 0;
+        var sw = Stopwatch.StartNew();
+        var createdCount = 0;
+        var updatedCount = 0;
+        var unchangedCount = 0;
+        var skippedCount = 0;
+        var failedCount = 0;
         var skipCount = 0;
+        var totalCount = 0;
+
+        var distinctVisible = new HashSet<Guid>();
+        var unmappedProductIds = new HashSet<Guid>();
+        var negativeCache = new HashSet<Guid>();
 
         _logger.LogInformation("Syncing subscriptions for {GymType}...", gymType);
 
@@ -242,28 +251,44 @@ public sealed class GymDataSyncJob
             }
             catch (ProFighter.Application.Common.Exceptions.RekazApiException ex) when (ex.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
             {
-                _logger.LogWarning("Rekaz rate limit hit (429) for {GymType} at SkipCount={SkipCount}. Consider increasing InterPageDelay.", gymType, skipCount);
+                _logger.LogWarning("Rekaz rate limit hit (429) for {GymType} at SkipCount={SkipCount}. Retrying after delay.", gymType, skipCount);
                 await Task.Delay(InterPageDelay * 4, ct);
                 var query  = new RekazSubscriptionsQuery(MaxResultCount: PageSize, SkipCount: skipCount);
                 result = await rekazClient.Subscriptions.GetSubscriptionsAsync(query, ct);
             }
 
-            if (result.Items.Count == 0)
+            if (totalCount == 0 && result.TotalCount > 0)
+            {
+                totalCount = (int)result.TotalCount;
+            }
+
+            if (result.Items == null || result.Items.Count == 0)
                 break;
 
             foreach (var rekazSub in result.Items)
             {
+                distinctVisible.Add(rekazSub.Id);
                 try
                 {
-                    var itemResult = await _subscriptionUpsertService.UpsertSubscriptionAsync(rekazSub, gymType, ct);
-                    if (itemResult == SubscriptionUpsertResult.Created || itemResult == SubscriptionUpsertResult.Updated)
-                        synced++;
+                    var itemResult = await _subscriptionUpsertService.UpsertSubscriptionAsync(
+                        rekazSub,
+                        gymType,
+                        negativeCache,
+                        unmappedProductIds,
+                        ct);
+
+                    if (itemResult == SubscriptionUpsertResult.Created)
+                        createdCount++;
+                    else if (itemResult == SubscriptionUpsertResult.Updated)
+                        updatedCount++;
+                    else if (itemResult == SubscriptionUpsertResult.Unchanged)
+                        unchangedCount++;
                     else
-                        skipped++;
+                        skippedCount++;
                 }
                 catch (Exception ex)
                 {
-                    failed++;
+                    failedCount++;
                     _logger.LogError(ex,
                         "Failed to upsert subscription RekazId={RekazId} for {GymType}.",
                         rekazSub.Id, gymType);
@@ -272,21 +297,26 @@ public sealed class GymDataSyncJob
 
             await _context.SaveChangesAsync(ct);
             ((DbContext)_context).ChangeTracker.Clear();
-            skipCount += result.Items.Count;
 
-            _logger.LogInformation("Fetched page starting at {SkipCount}, received {Count}/{TotalCount} items for {GymType}.", 
-                skipCount - result.Items.Count, result.Items.Count, result.TotalCount, gymType);
+            skipCount += PageSize;
 
-            if (skipCount >= result.TotalCount || result.Items.Count == 0)
+            _logger.LogDebug("Fetched subscription page starting at {SkipCount}, received {Count}/{TotalCount} items for {GymType}.", 
+                skipCount - PageSize, result.Items.Count, result.TotalCount, gymType);
+
+            if (skipCount >= result.TotalCount)
                 break;
 
             await Task.Delay(InterPageDelay, ct);
         }
 
-        _logger.LogInformation(
-            "Subscription sync finished for {GymType}: synced={Synced}, skipped={Skipped}, failed={Failed}.",
-            gymType, synced, skipped, failed);
+        sw.Stop();
+        var visibleCount = distinctVisible.Count;
+        var hiddenCount = Math.Max(0, totalCount - visibleCount);
 
-        return (synced, skipped, failed);
+        _logger.LogInformation(
+            "Subscription sync completed for {GymType} in {Elapsed:g}: totalCount={TotalCount}, visible={Visible}, hidden={Hidden}, created={Created}, updated={Updated}, unchanged={Unchanged}, skipped={Skipped}, failed={Failed}, distinctUnmappedProducts={DistinctUnmappedProducts}",
+            gymType, sw.Elapsed, totalCount, visibleCount, hiddenCount, createdCount, updatedCount, unchangedCount, skippedCount, failedCount, unmappedProductIds.Count);
+
+        return (createdCount, updatedCount, unchangedCount, skippedCount, failedCount);
     }
 }
