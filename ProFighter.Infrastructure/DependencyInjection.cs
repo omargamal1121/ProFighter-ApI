@@ -148,7 +148,7 @@ public static class DependencyInjection
         services.AddScoped<INotificationEmailService, Services.NotificationEmailService>();
         services.AddScoped<IAccountEmailService, Services.AccountEmailService>();
         services.AddScoped<IErrorNotificationService, Services.ErrorNotificationService>();
-        services.AddScoped<Microsoft.AspNetCore.Identity.UI.Services.IEmailSender, Services.EmailSender>();
+        services.AddHttpClient<Microsoft.AspNetCore.Identity.UI.Services.IEmailSender, Services.EmailSender>();
 
         // Auth Token Services
         services.AddScoped<ITokenService, TokenService>();

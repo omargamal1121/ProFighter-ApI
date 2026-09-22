@@ -103,7 +103,7 @@ public class CustomerProvisioningService : ICustomerProvisioningService
             source: source,
             email: email,
             rekazCustomerId: rekazCustomerId,
-            isFirstLogin: true,
+            isFirstLogin: false,
             gymType: gymType);
         _context.Customers.Add(customer);
 
@@ -149,9 +149,13 @@ public class CustomerProvisioningService : ICustomerProvisioningService
         if (existingCustomer != null)
         {
             return existingCustomer;
-        }
+		}
+		bool isfirstlogin = true;
 
-        var customer = new Customer(user.Id, name, mobileNumber, source, email, rekazCustomerId, isFirstLogin: true, gymType: gymType);
+        if(source==CustomerSource.EmailRegistration)
+            isfirstlogin= false;
+
+        var customer = new Customer(user.Id, name, mobileNumber, source, email, rekazCustomerId, isFirstLogin: isfirstlogin, gymType: gymType);
         _context.Customers.Add(customer);
 
         return customer;

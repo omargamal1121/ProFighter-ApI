@@ -15,6 +15,7 @@ public record GetMyProfileResult(
     string Name,
     string MobileNumber,
     string? Email,
+    string? ImageUrl,
     bool IsEmailConfirmed,
     int LoyaltyPointsBalance,
     string Source,

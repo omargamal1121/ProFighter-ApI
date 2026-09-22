@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ProFighter.Application.Common.Interfaces;
+using ProFighter.Domain.Enums;
 
 namespace ProFighter.Application.Customers.Queries.GetMyProfile;
 
@@ -26,12 +27,27 @@ public sealed class GetMyProfileQueryHandler
         GetMyProfileQuery request,
         CancellationToken cancellationToken)
     {
-        var customer = await _context.Customers
+        var result = await _context.Customers
             .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == request.CustomerId, cancellationToken);
+            .Where(c => c.Id == request.CustomerId)
+            .Select(c => new
+            {
+                Customer = c,
+                ImageUrl = _context.Medias
+                    .Where(m => m.OwnerId == c.Id
+                             && m.OwnerType == MediaOwnerType.Customer
+                             && m.Purpose == MediaPurpose.ProfileImage)
+                    .OrderByDescending(m => m.CreatedAt)
+                    .Select(m => m.CloudinaryUrl)
+                    .FirstOrDefault()
+            })
+            .FirstOrDefaultAsync(cancellationToken);
 
-        if (customer is null)
+        if (result is null)
             throw new InvalidOperationException($"Customer with ID {request.CustomerId} not found.");
+
+        var customer = result.Customer;
+        var imageUrl = result.ImageUrl;
 
         var isEmailConfirmed = await _authenticationService
             .IsEmailConfirmedAsync(request.CustomerId, cancellationToken);
@@ -43,6 +59,7 @@ public sealed class GetMyProfileQueryHandler
             Name:                 customer.Name,
             MobileNumber:         customer.MobileNumber,
             Email:                customer.Email,
+            ImageUrl:             imageUrl,
             IsEmailConfirmed:     isEmailConfirmed,
             LoyaltyPointsBalance: customer.LoyaltyPointsBalance,
             Source:               customer.Source.ToString(),

@@ -1,71 +1,68 @@
+using System.Net.Http.Json;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using MailKit.Net.Smtp;
-using MailKit.Security;
-using MimeKit;
 
 namespace ProFighter.Infrastructure.Services;
 
 public class EmailSender : IEmailSender
 {
+    private readonly HttpClient _httpClient;
     private readonly IConfiguration _configuration;
     private readonly ILogger<EmailSender> _logger;
 
-    public EmailSender(IConfiguration configuration, ILogger<EmailSender> logger)
+    public EmailSender(HttpClient httpClient, IConfiguration configuration, ILogger<EmailSender> logger)
     {
+        _httpClient = httpClient;
         _configuration = configuration;
         _logger = logger;
     }
 
-    private EmailSettings GetEmailSettings()
-    {
-        return new EmailSettings
-        {
-            Address = _configuration["Email:Address"] ?? throw new InvalidOperationException("Can't Find Email address"),
-            Password = _configuration["Email:Password"] ?? throw new InvalidOperationException("Can't Find Email password"),
-            Host = _configuration["Email:Host"] ?? throw new InvalidOperationException("Can't Find Email host"),
-            Port = int.Parse(_configuration["Email:Port"] ?? throw new InvalidOperationException("Can't Find Email port"))
-        };
-    }
-
     public async Task SendEmailAsync(string email, string subject, string htmlMessage)
     {
-        var settings = GetEmailSettings();
+        var apiKey = _configuration["Brevo:ApiKey"];
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            _logger.LogError("Brevo API key missing in configuration ('Brevo:ApiKey').");
+            throw new InvalidOperationException("Brevo API key missing in configuration ('Brevo:ApiKey').");
+        }
 
-        var message = new MimeMessage();
-        message.From.Add(MailboxAddress.Parse(settings.Address));
-        message.To.Add(MailboxAddress.Parse(email));
-        message.Subject = subject;
-        message.Body = new TextPart("html") { Text = htmlMessage };
+        var senderEmail = _configuration["Brevo:SenderEmail"] ?? _configuration["Email:Address"] ?? "no-reply@profighter.com";
+        var senderName = _configuration["Brevo:SenderName"] ?? "ProFighter Gym";
 
-        using var client = new SmtpClient();
+        var payload = new
+        {
+            sender = new { email = senderEmail, name = senderName },
+            to = new[] { new { email } },
+            subject,
+            htmlContent = htmlMessage.StartsWith("<html>", StringComparison.OrdinalIgnoreCase)
+                ? htmlMessage
+                : $"<html><body>{htmlMessage}</body></html>"
+        };
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.brevo.com/v3/smtp/email")
+        {
+            Content = JsonContent.Create(payload)
+        };
+        request.Headers.Add("api-key", apiKey);
+
         try
         {
-            await client.ConnectAsync(settings.Host, settings.Port, SecureSocketOptions.StartTls);
-            await client.AuthenticateAsync(settings.Address, settings.Password);
-            await client.SendAsync(message);
-            _logger.LogInformation("Email sent successfully to {Email} via MailKit", email);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to send email to {Email} via MailKit. Email={EmailAddress}, Host={Host}, Port={Port}",
-                email, settings.Address, settings.Host, settings.Port);
-            throw new InvalidOperationException(
-                $"Failed to send email via MailKit. Email={settings.Address}, Host={settings.Host}, Port={settings.Port}",
-                ex);
-        }
-        finally
-        {
-            await client.DisconnectAsync(true);
-        }
-    }
+            var response = await _httpClient.SendAsync(request);
 
-    private class EmailSettings
-    {
-        public string Address { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
-        public string Host { get; set; } = string.Empty;
-        public int Port { get; set; }
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                _logger.LogError("Brevo email failed with status {StatusCode}: {Error}", response.StatusCode, error);
+                throw new InvalidOperationException($"Brevo email failed: {error}");
+            }
+
+            _logger.LogInformation("Email sent successfully via Brevo to {Email}", email);
+        }
+        catch (Exception ex) when (ex is not InvalidOperationException)
+        {
+            _logger.LogError(ex, "Unexpected error occurred while sending email via Brevo to {Email}", email);
+            throw new InvalidOperationException($"Failed to send email via Brevo to {email}", ex);
+        }
     }
 }
