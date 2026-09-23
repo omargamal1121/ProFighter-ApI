@@ -44,7 +44,6 @@ public class UploadCustomerImageCommandHandler : IRequestHandler<UploadCustomerI
             return Result<CustomerMediaDto>.Failure(uploadResult.Message ?? "Failed to upload image.", uploadResult.Status);
 
         var media = new Media(
-            id: Guid.NewGuid(),
             cloudinaryUrl: uploadResult.Data.Url,
             cloudinaryPublicId: uploadResult.Data.PublicId,
             type: MediaType.Image,

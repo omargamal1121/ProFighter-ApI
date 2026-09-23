@@ -60,7 +60,7 @@ public class AuthenticationService : IAuthenticationService
         var sanitizedMobile = new string(mobileNumber.Where(char.IsDigit).ToArray());
 
         var customer = await _context.Customers
-            .FirstOrDefaultAsync(c => c.MobileNumber == mobileNumber || c.MobileNumber == sanitizedMobile, ct);
+            .FirstOrDefaultAsync(c => (c.MobileNumber == mobileNumber || c.MobileNumber == sanitizedMobile)&&c.GymType==0, ct);
 
         ApplicationUser? user = null;
         if (customer != null)
