@@ -20,6 +20,7 @@ public class RekazTransactionEventHandler : IRekazTransactionEventHandler
     private readonly IRekazCustomerSyncService _customerSyncService;
     private readonly INotificationService _notificationService;
     private readonly IBackgroundJobClient _backgroundJobs;
+    private readonly IExceptionLogFormatter _logFormatter;
     private readonly ILogger<RekazTransactionEventHandler> _logger;
 
     public RekazTransactionEventHandler(
@@ -28,6 +29,7 @@ public class RekazTransactionEventHandler : IRekazTransactionEventHandler
         IRekazCustomerSyncService customerSyncService,
         INotificationService notificationService,
         IBackgroundJobClient backgroundJobs,
+        IExceptionLogFormatter logFormatter,
         ILogger<RekazTransactionEventHandler> logger)
     {
         _context = context;
@@ -35,6 +37,7 @@ public class RekazTransactionEventHandler : IRekazTransactionEventHandler
         _customerSyncService = customerSyncService;
         _notificationService = notificationService;
         _backgroundJobs = backgroundJobs;
+        _logFormatter = logFormatter;
         _logger = logger;
     }
 
@@ -109,7 +112,8 @@ public class RekazTransactionEventHandler : IRekazTransactionEventHandler
             }
             catch (DbUpdateException ex)
             {
-                _logger.LogWarning(ex, "DbUpdateException on SaveChangesAsync for transaction {TransactionId} webhook event {EventName}. Clearing ChangeTracker and allowing Hangfire retry.", transactionId, eventName);
+                var formattedError = _logFormatter.ToOneLine(ex);
+                _logger.LogWarning("DbUpdateException on SaveChangesAsync for transaction {TransactionId} webhook event {EventName}: {Error}. Clearing ChangeTracker and allowing Hangfire retry.", transactionId, eventName, formattedError);
                 foreach (var entry in ((DbContext)_context).ChangeTracker.Entries().ToList())
                 {
                     entry.State = EntityState.Detached;
@@ -163,7 +167,8 @@ public class RekazTransactionEventHandler : IRekazTransactionEventHandler
 
         if (lastException is not null && lastException is not ProFighter.Application.Common.Exceptions.RekazApiException { StatusCode: System.Net.HttpStatusCode.NotFound })
         {
-            _logger.LogWarning(lastException, "Exception fetching transaction {TransactionId} across all gyms", transactionId);
+            var formattedError = _logFormatter.ToOneLine(lastException);
+            _logger.LogWarning("Exception fetching transaction {TransactionId} across all gyms: {Error}", transactionId, formattedError);
         }
 
         return null;

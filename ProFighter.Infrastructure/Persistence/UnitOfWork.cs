@@ -47,7 +47,6 @@ public class UnitOfWork : IUnitOfWork
                     entry.State = EntityState.Detached;
                 }
 
-                _logger.LogError(ex, "Transaction failed, rolling back.");
                 await transaction.RollbackAsync(ct);
                 throw;
             }
@@ -64,13 +63,11 @@ public class UnitOfWork : IUnitOfWork
         }
         catch (DbUpdateConcurrencyException ex)
         {
-            _logger.LogError(ex, "Concurrency conflict occurred while saving changes.");
             throw new InvalidOperationException(
                 "Unable to save changes. The record was modified or deleted by another process. Please refresh and try again.", ex);
         }
         catch (DbUpdateException ex)
         {
-            _logger.LogError(ex, "Database update error occurred.");
             var innerMessage = ex.InnerException?.Message?.ToLowerInvariant() ?? string.Empty;
 
             if (innerMessage.Contains("foreign key") || innerMessage.Contains("reference"))

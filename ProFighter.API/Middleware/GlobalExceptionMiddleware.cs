@@ -21,12 +21,32 @@ public class GlobalExceptionMiddleware : IMiddleware
         }
         catch (UnauthorizedAccessException ex)
         {
-            _logger.LogWarning("Authentication/authorization failure: {Message}", ex.Message);
+            var formattedError = ProFighter.Infrastructure.Logging.ExceptionLogFormatter.ToOneLine(ex);
+            _logger.LogWarning("Authentication/authorization failure: {Error}", formattedError);
+            await HandleExceptionAsync(context, ex, _logger);
+        }
+        catch (ArgumentException ex)
+        {
+            var formattedError = ProFighter.Infrastructure.Logging.ExceptionLogFormatter.ToOneLine(ex);
+            _logger.LogWarning("Validation error: {Error}", formattedError);
+            await HandleExceptionAsync(context, ex, _logger);
+        }
+        catch (InvalidOperationException ex)
+        {
+            var formattedError = ProFighter.Infrastructure.Logging.ExceptionLogFormatter.ToOneLine(ex);
+            _logger.LogWarning("Invalid operation: {Error}", formattedError);
+            await HandleExceptionAsync(context, ex, _logger);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            var formattedError = ProFighter.Infrastructure.Logging.ExceptionLogFormatter.ToOneLine(ex);
+            _logger.LogWarning("Resource not found: {Error}", formattedError);
             await HandleExceptionAsync(context, ex, _logger);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "An unhandled exception occurred: {Message}", ex.Message);
+            var formattedError = ProFighter.Infrastructure.Logging.ExceptionLogFormatter.ToOneLine(ex);
+            _logger.LogError("Unhandled exception: {Error}", formattedError);
             await HandleExceptionAsync(context, ex, _logger);
         }
     }
@@ -38,16 +58,10 @@ public class GlobalExceptionMiddleware : IMiddleware
     {
         if (context.Response.HasStarted)
         {
-            // The response has already been partially sent to the client.
-            // We cannot modify headers or status code at this point.
-            // Log a clear diagnostic message and rethrow the ORIGINAL exception
-            // so the host/Kestrel logs the real cause — not a secondary
-            // "Headers are read-only" exception.
+            var formattedError = ProFighter.Infrastructure.Logging.ExceptionLogFormatter.ToOneLine(exception);
             logger.LogError(
-                exception,
-                "An exception was thrown after the response had already started. " +
-                "The original exception is preserved below. " +
-                "Path: {Path} | Method: {Method} | StatusCode already sent: {StatusCode}",
+                "Exception thrown after response started: {Error} | Path: {Path} | Method: {Method} | StatusCode: {StatusCode}",
+                formattedError,
                 context.Request.Path,
                 context.Request.Method,
                 context.Response.StatusCode);

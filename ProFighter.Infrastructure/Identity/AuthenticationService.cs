@@ -230,4 +230,25 @@ public class AuthenticationService : IAuthenticationService
 
         _logger.LogInformation("Email confirmed successfully for user {UserId}", userId);
     }
+
+    public async Task ChangeEmailAsync(Guid userId, string newEmail, CancellationToken ct = default)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user == null)
+        {
+            throw new InvalidOperationException($"User with ID {userId} not found.");
+        }
+
+        user.Email = newEmail;
+        user.EmailConfirmed = false;
+
+        var updateResult = await _userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+        {
+            var errors = string.Join("; ", updateResult.Errors.Select(e => e.Description));
+            throw new InvalidOperationException($"Failed to update email: {errors}");
+        }
+
+        _logger.LogInformation("Email updated to {NewEmail} and marked unconfirmed for user {UserId}", newEmail, userId);
+    }
 }

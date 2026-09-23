@@ -44,7 +44,8 @@ public class ErrorNotificationService : IErrorNotificationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send error notification email");
+            var formattedError = ProFighter.Infrastructure.Logging.ExceptionLogFormatter.ToOneLine(ex);
+            _logger.LogError("Failed to send error notification email: {Error}", formattedError);
         }
     }
 }

@@ -105,20 +105,26 @@ public static class DependencyInjection
 
 		// Hangfire with MySQL storage
 	
-		services.AddHangfire(config => config
-	  .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
-	  .UseSimpleAssemblyNameTypeSerializer()
-	  .UseRecommendedSerializerSettings()
-	  .UseStorage(new MySqlStorage(connectionString, new MySqlStorageOptions
-	  {
-		  TransactionTimeout = TimeSpan.FromMinutes(1),
-		  QueuePollInterval = TimeSpan.FromSeconds(2),
-		  JobExpirationCheckInterval = TimeSpan.FromHours(1),
-		  CountersAggregateInterval = TimeSpan.FromMinutes(5),
-		  PrepareSchemaIfNecessary = true,
-		  DashboardJobListLimit = 500,
-		
-	  })));
+		services.AddHangfire((sp, config) =>
+		{
+			config
+			.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+			.UseSimpleAssemblyNameTypeSerializer()
+			.UseRecommendedSerializerSettings()
+			.UseStorage(new MySqlStorage(connectionString, new MySqlStorageOptions
+			{
+				TransactionTimeout = TimeSpan.FromMinutes(1),
+				QueuePollInterval = TimeSpan.FromSeconds(2),
+				JobExpirationCheckInterval = TimeSpan.FromHours(1),
+				CountersAggregateInterval = TimeSpan.FromMinutes(5),
+				PrepareSchemaIfNecessary = true,
+				DashboardJobListLimit = 500,
+			}))
+			.UseFilter(new Logging.HangfireOneLineExceptionFilter());
+
+			var loggerFactory = sp.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>();
+			Logging.HangfireOneLineExceptionFilter.Initialize(loggerFactory);
+		});
 
 		services.AddHangfireServer(options =>
         {
@@ -140,6 +146,9 @@ public static class DependencyInjection
         // DB Context & Transactions
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<IUnitOfWork, Persistence.UnitOfWork>();
+
+        // Exception Log Formatter
+        services.AddSingleton<IExceptionLogFormatter, Logging.ExceptionLogFormatter>();
 
         // Provisioning & Email Services
         services.AddScoped<ICustomerProvisioningService, Identity.CustomerProvisioningService>();

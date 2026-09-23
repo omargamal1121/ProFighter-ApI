@@ -125,7 +125,8 @@ public class AccountEmailService : IAccountEmailService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Failed to send password reset OTP email to {email}");
+            var formattedError = ProFighter.Infrastructure.Logging.ExceptionLogFormatter.ToOneLine(ex);
+            _logger.LogError("Failed to send password reset OTP email to {Email}: {Error}", email, formattedError);
             throw;
         }
     }

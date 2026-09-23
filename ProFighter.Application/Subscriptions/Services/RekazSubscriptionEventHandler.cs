@@ -18,6 +18,7 @@ public class RekazSubscriptionEventHandler : IRekazSubscriptionEventHandler
     private readonly IRekazClientFactory _rekazClientFactory;
     private readonly IRekazCustomerSyncService _customerSyncService;
     private readonly INotificationService _notificationService;
+    private readonly IExceptionLogFormatter _logFormatter;
     private readonly ILogger<RekazSubscriptionEventHandler> _logger;
 
     public RekazSubscriptionEventHandler(
@@ -26,6 +27,7 @@ public class RekazSubscriptionEventHandler : IRekazSubscriptionEventHandler
         IRekazClientFactory rekazClientFactory,
         IRekazCustomerSyncService customerSyncService,
         INotificationService notificationService,
+        IExceptionLogFormatter logFormatter,
         ILogger<RekazSubscriptionEventHandler> logger)
     {
         _context = context;
@@ -33,6 +35,7 @@ public class RekazSubscriptionEventHandler : IRekazSubscriptionEventHandler
         _rekazClientFactory = rekazClientFactory;
         _customerSyncService = customerSyncService;
         _notificationService = notificationService;
+        _logFormatter = logFormatter;
         _logger = logger;
     }
 
@@ -170,7 +173,8 @@ public class RekazSubscriptionEventHandler : IRekazSubscriptionEventHandler
 
         if (lastException is not null && lastException is not ProFighter.Application.Common.Exceptions.RekazApiException { StatusCode: System.Net.HttpStatusCode.NotFound })
         {
-            _logger.LogWarning(lastException, "Exception fetching subscription {RekazSubscriptionId} across all gyms", rekazSubscriptionId);
+            var formattedError = _logFormatter.ToOneLine(lastException);
+            _logger.LogWarning("Exception fetching subscription {RekazSubscriptionId} across all gyms: {Error}", rekazSubscriptionId, formattedError);
         }
 
         return null;

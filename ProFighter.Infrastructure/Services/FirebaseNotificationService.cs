@@ -79,8 +79,8 @@ public class FirebaseNotificationService : INotificationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "An error occurred while attempting to send a push notification to user {UserId}.", userId);
-           
+            var formattedError = ProFighter.Infrastructure.Logging.ExceptionLogFormatter.ToOneLine(ex);
+            _logger.LogError("An error occurred while attempting to send a push notification to user {UserId}: {Error}", userId, formattedError);
         }
     }
 }

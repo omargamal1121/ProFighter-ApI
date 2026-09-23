@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using ProFighter.Application.Common.Enums;
 using ProFighter.Application.Common.Interfaces;
 using System.Security.Cryptography;
 using System.Threading;
@@ -12,6 +13,7 @@ public class PasswordResetService : IPasswordResetService
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IAccountEmailService _accountEmailService;
+    private readonly IEmailConfirmationService _emailConfirmationService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<PasswordResetService> _logger;
     private readonly IPasswordResetOtpService _otpService;
@@ -19,18 +21,20 @@ public class PasswordResetService : IPasswordResetService
     public PasswordResetService(
         UserManager<ApplicationUser> userManager,
         IAccountEmailService accountEmailService,
+        IEmailConfirmationService emailConfirmationService,
         IConfiguration configuration,
         ILogger<PasswordResetService> logger,
         IPasswordResetOtpService otpService)
     {
         _userManager = userManager;
         _accountEmailService = accountEmailService;
+        _emailConfirmationService = emailConfirmationService;
         _configuration = configuration;
         _logger = logger;
         _otpService = otpService;
     }
 
-    public async Task SendPasswordResetOtpAsync(Guid userId, CancellationToken ct = default)
+    public async Task<PasswordResetOtpResult> SendPasswordResetOtpAsync(Guid userId, CancellationToken ct = default)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());
         if (user == null)
@@ -41,6 +45,13 @@ public class PasswordResetService : IPasswordResetService
         if (string.IsNullOrWhiteSpace(user.Email))
         {
             throw new InvalidOperationException($"User {userId} does not have an email address.");
+        }
+
+        if (!await _userManager.IsEmailConfirmedAsync(user))
+        {
+            await _emailConfirmationService.SendConfirmationOtpAsync(userId, ct);
+            _logger.LogInformation("Email not confirmed for customer {CustomerId}; confirmation OTP sent instead of reset OTP", userId);
+            return PasswordResetOtpResult.EmailConfirmationRequired;
         }
 
         // Generate a 6-digit OTP
@@ -55,6 +66,7 @@ public class PasswordResetService : IPasswordResetService
         // Send OTP via email
         await _accountEmailService.SendPasswordResetEmailAsync(user.Email, user.UserName, otp);
         _logger.LogInformation("Password reset OTP sent successfully to customer {CustomerId}", userId);
+        return PasswordResetOtpResult.ResetOtpSent;
     }
 
     private static string GenerateOtp()

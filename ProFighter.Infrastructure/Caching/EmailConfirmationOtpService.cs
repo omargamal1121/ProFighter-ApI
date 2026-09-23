@@ -29,8 +29,8 @@ public class EmailConfirmationOtpService : IEmailConfirmationOtpService
         
         // Verify storage by trying to retrieve immediately
         var testRetrieve = _cache.Get<string>(cacheKey);
-        _logger.LogInformation("Stored email confirmation OTP for user {UserId}, OTP: {Otp}, Key: {Key}, Expiry: {Minutes}min, Retrieved: {Retrieved}",
-            userId, otp, cacheKey, expiry.TotalMinutes, testRetrieve ?? "NULL");
+        _logger.LogInformation("Stored email confirmation OTP for user {UserId}, Key: {Key}, Expiry: {Minutes}min, SuccessfullyRetrieved: {Retrieved}",
+            userId, cacheKey, expiry.TotalMinutes, testRetrieve != null);
     }
 
     public bool ValidateAndConsumeOtp(string userId, string otp)
@@ -39,8 +39,8 @@ public class EmailConfirmationOtpService : IEmailConfirmationOtpService
         
         // Log attempt details
         var existsBefore = _cache.TryGetValue(cacheKey, out string? storedOtp);
-        _logger.LogInformation("Email OTP Validation attempt - UserId: {UserId}, Key: {Key}, Exists: {Exists}, InputOTP: {InputOTP}, StoredOTP: {StoredOTP}",
-            userId, cacheKey, existsBefore, otp, storedOtp ?? "NULL");
+        _logger.LogInformation("Email OTP Validation attempt - UserId: {UserId}, Key: {Key}, Exists: {Exists}",
+            userId, cacheKey, existsBefore);
 
         if (existsBefore && storedOtp == otp)
         {

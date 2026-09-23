@@ -61,7 +61,8 @@ public class EmailSender : IEmailSender
         }
         catch (Exception ex) when (ex is not InvalidOperationException)
         {
-            _logger.LogError(ex, "Unexpected error occurred while sending email via Brevo to {Email}", email);
+            var formattedError = ProFighter.Infrastructure.Logging.ExceptionLogFormatter.ToOneLine(ex);
+            _logger.LogError("Unexpected error occurred while sending email via Brevo to {Email}: {Error}", email, formattedError);
             throw new InvalidOperationException($"Failed to send email via Brevo to {email}", ex);
         }
     }

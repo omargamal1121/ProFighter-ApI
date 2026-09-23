@@ -81,7 +81,8 @@ public class CloudinaryImageService : IImageService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to validate file signature for {FileName}", file.FileName);
+            var formattedError = ProFighter.Infrastructure.Logging.ExceptionLogFormatter.ToOneLine(ex);
+            _logger.LogError("Failed to validate file signature for {FileName}: {Error}", file.FileName, formattedError);
             errorMessage = "Could not validate file structure.";
             return false;
         }
@@ -129,7 +130,8 @@ public class CloudinaryImageService : IImageService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error uploading image to Cloudinary folder {Folder}", folderName);
+            var formattedError = ProFighter.Infrastructure.Logging.ExceptionLogFormatter.ToOneLine(ex);
+            _logger.LogError("Error uploading image to Cloudinary folder {Folder}: {Error}", folderName, formattedError);
             return Result<ImageUploadResult>.Failure($"Failed to upload image: {ex.Message}", 500);
         }
     }
@@ -157,7 +159,8 @@ public class CloudinaryImageService : IImageService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting image {PublicId} from Cloudinary", publicId);
+            var formattedError = ProFighter.Infrastructure.Logging.ExceptionLogFormatter.ToOneLine(ex);
+            _logger.LogError("Error deleting image {PublicId} from Cloudinary: {Error}", publicId, formattedError);
             return Result<bool>.Failure($"Failed to delete image: {ex.Message}", 500);
         }
     }

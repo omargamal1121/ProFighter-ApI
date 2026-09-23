@@ -61,13 +61,12 @@ namespace ProFighter.API
 
 			builder.Services.AddRateLimiter(options =>
 			{
+				// AI plan endpoint: 100 req/min per user or IP
 				options.AddPolicy("AiPlanPolicy", context =>
 				{
-					// Rate limit per authenticated user id, fallback to IP if not authenticated
 					var userId = context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
 						?? context.Connection.RemoteIpAddress?.ToString()
 						?? "anonymous";
-
 					return System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(userId,
 						partition => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
 						{
@@ -77,6 +76,51 @@ namespace ProFighter.API
 							Window = TimeSpan.FromMinutes(1)
 						});
 				});
+
+				// Strict auth policy: 5 req/min per IP — OTP submission, forgot-password, confirm-email
+				options.AddPolicy("AuthStrictPolicy", context =>
+				{
+					var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+					return System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(ip,
+						partition => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+						{
+							AutoReplenishment = true,
+							PermitLimit = 5,
+							QueueLimit = 0,
+							Window = TimeSpan.FromMinutes(1)
+						});
+				});
+
+				// General auth policy: 20 req/min per IP — login, register, request-email-confirmation
+				options.AddPolicy("AuthGeneralPolicy", context =>
+				{
+					var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+					return System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(ip,
+						partition => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+						{
+							AutoReplenishment = true,
+							PermitLimit = 20,
+							QueueLimit = 0,
+							Window = TimeSpan.FromMinutes(1)
+						});
+				});
+
+				// General API policy: 120 req/min per user or IP — all other endpoints
+				options.AddPolicy("GeneralApiPolicy", context =>
+				{
+					var userId = context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+						?? context.Connection.RemoteIpAddress?.ToString()
+						?? "anonymous";
+					return System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(userId,
+						partition => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+						{
+							AutoReplenishment = true,
+							PermitLimit = 120,
+							QueueLimit = 0,
+							Window = TimeSpan.FromMinutes(1)
+						});
+				});
+
 				options.RejectionStatusCode = 429;
 			});
 
@@ -144,10 +188,7 @@ namespace ProFighter.API
 			{
 				try
 				{
-					var db = scope.ServiceProvider.GetRequiredService<ProFighter.Infrastructure.Persistence.AppDbContext>();
-					Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.Migrate(db.Database);
-					Log.Information("Database migrations applied successfully.");
-
+				
 					await ProFighter.Infrastructure.Persistence.Seed.DbSeeder.SeedAdminUserAsync(scope.ServiceProvider);
 				}
 				catch (Exception ex)

@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using ProFighter.Application.Auth.Commands.AdminLogin;
 using ProFighter.Application.Auth.Commands.CompleteAccount;
 using ProFighter.Application.Auth.Commands.CompleteFirstLogin;
@@ -33,8 +34,10 @@ public sealed class AuthController : BaseController
     /// </summary>
     [HttpPost("login")]
     [AllowAnonymous]
+    [EnableRateLimiting("AuthGeneralPolicy")]
     [ProducesResponseType(typeof(ApiResponse<LoginResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<ApiResponse<LoginResult>>> Login(
         [FromBody] LoginCommand command,
         CancellationToken cancellationToken)
@@ -50,8 +53,10 @@ public sealed class AuthController : BaseController
     /// </summary>
     [HttpPost("admin/login")]
     [AllowAnonymous]
+    [EnableRateLimiting("AuthGeneralPolicy")]
     [ProducesResponseType(typeof(ApiResponse<LoginResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<ApiResponse<LoginResult>>> AdminLogin(
         [FromBody] AdminLoginCommand command,
         CancellationToken cancellationToken)
@@ -67,8 +72,10 @@ public sealed class AuthController : BaseController
     /// </summary>
     [HttpPost("register")]
     [AllowAnonymous]
+    [EnableRateLimiting("AuthGeneralPolicy")]
     [ProducesResponseType(typeof(ApiResponse<RegisterCustomerResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<ApiResponse<RegisterCustomerResult>>> Register(
         [FromBody] RegisterCustomerCommand command,
         CancellationToken cancellationToken)
@@ -84,10 +91,12 @@ public sealed class AuthController : BaseController
     /// </summary>
     [HttpPost("complete-account")]
     [Authorize]
+    [EnableRateLimiting("GeneralApiPolicy")]
     [ProducesResponseType(typeof(ApiResponse<CompleteAccountResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<ApiResponse<CompleteAccountResult>>> CompleteAccount(
         [FromBody] CompleteAccountRequest request,
         CancellationToken cancellationToken)
@@ -120,9 +129,11 @@ public sealed class AuthController : BaseController
     /// </summary>
     [HttpPost("complete-first-login")]
     [AllowAnonymous]
+    [EnableRateLimiting("AuthStrictPolicy")]
     [ProducesResponseType(typeof(ApiResponse<CompleteFirstLoginResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<ApiResponse<CompleteFirstLoginResult>>> CompleteFirstLogin(
         [FromBody] CompleteFirstLoginCommand command,
         CancellationToken cancellationToken)
@@ -138,8 +149,10 @@ public sealed class AuthController : BaseController
     /// </summary>
     [HttpPost("forgot-password")]
     [AllowAnonymous]
+    [EnableRateLimiting("AuthStrictPolicy")]
     [ProducesResponseType(typeof(ApiResponse<ForgotPasswordResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<ApiResponse<ForgotPasswordResult>>> ForgotPassword(
         [FromBody] ForgotPasswordCommand command,
         CancellationToken cancellationToken)
@@ -155,8 +168,10 @@ public sealed class AuthController : BaseController
     /// </summary>
     [HttpPost("reset-password")]
     [AllowAnonymous]
+    [EnableRateLimiting("AuthStrictPolicy")]
     [ProducesResponseType(typeof(ApiResponse<ResetPasswordWithOtpResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<ApiResponse<ResetPasswordWithOtpResult>>> ResetPassword(
         [FromBody] ResetPasswordWithOtpCommand command,
         CancellationToken cancellationToken)
@@ -182,8 +197,10 @@ public sealed class AuthController : BaseController
     /// </summary>
     [HttpPost("confirm-email")]
     [AllowAnonymous]
+    [EnableRateLimiting("AuthStrictPolicy")]
     [ProducesResponseType(typeof(ApiResponse<ConfirmEmailWithOtpResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<ApiResponse<ConfirmEmailWithOtpResult>>> ConfirmEmail(
         [FromBody] ConfirmEmailWithOtpCommand command,
         CancellationToken cancellationToken)
@@ -209,8 +226,10 @@ public sealed class AuthController : BaseController
     /// </summary>
     [HttpPost("request-email-confirmation")]
     [AllowAnonymous]
+    [EnableRateLimiting("AuthStrictPolicy")]
     [ProducesResponseType(typeof(ApiResponse<RequestEmailConfirmationResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<ApiResponse<RequestEmailConfirmationResult>>> RequestEmailConfirmation(
         [FromBody] RequestEmailConfirmationCommand command,
         CancellationToken cancellationToken)
@@ -228,7 +247,39 @@ public sealed class AuthController : BaseController
                 400));
         }
     }
+
+    /// <summary>
+    /// Change email address for authenticated user.
+    /// Sets email status as unconfirmed (even if previously confirmed) and sends email confirmation OTP.
+    /// Requires [Authorize].
+    /// </summary>
+    [HttpPost("change-email")]
+    [Authorize]
+    [EnableRateLimiting("AuthStrictPolicy")]
+    [ProducesResponseType(typeof(ApiResponse<ProFighter.Application.Auth.Commands.ChangeEmail.ChangeEmailResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    public async Task<ActionResult<ApiResponse<ProFighter.Application.Auth.Commands.ChangeEmail.ChangeEmailResult>>> ChangeEmail(
+        [FromBody] ChangeEmailRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        if (userId is null)
+            return Unauthorized(ApiResponse<object>.CreateErrorResponse(
+                "Unauthorized",
+                new ErrorResponse("Unauthorized", "User identity could not be determined."),
+                401));
+
+        var command = new ProFighter.Application.Auth.Commands.ChangeEmail.ChangeEmailCommand(userId.Value, request.NewEmail);
+        var result = await _mediator.Send(command, cancellationToken);
+        return Ok(ApiResponse<ProFighter.Application.Auth.Commands.ChangeEmail.ChangeEmailResult>.CreateSuccessResponse(result.Message, result, 200));
+    }
 }
 
 /// <summary>Request body for complete-account endpoint. UserId is sourced from the JWT claim, not the body.</summary>
 public record CompleteAccountRequest(string NewPassword, string Email);
+
+/// <summary>Request body for change-email endpoint.</summary>
+public record ChangeEmailRequest(string NewEmail);
+

@@ -60,7 +60,11 @@ public sealed class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswor
 
         try
         {
-            await _passwordResetService.SendPasswordResetOtpAsync(customer.Id, ct);
+            var otpResult = await _passwordResetService.SendPasswordResetOtpAsync(customer.Id, ct);
+            if (otpResult == Common.Enums.PasswordResetOtpResult.EmailConfirmationRequired)
+            {
+                return new ForgotPasswordResult(ForgotPasswordOutcome.EmailNotConfirmed);
+            }
         }
         catch (Exception ex)
         {
