@@ -39,7 +39,8 @@ public class CreateTrainerCommandHandler : IRequestHandler<CreateTrainerCommand,
                 name: request.Name,
                 bio: request.Bio,
                 isActive: false,
-                gymType: request.GymType
+                gymType: request.GymType,
+                trainingType: request.TrainingType
             );
             _context.Trainers.Add(t);
             return t;

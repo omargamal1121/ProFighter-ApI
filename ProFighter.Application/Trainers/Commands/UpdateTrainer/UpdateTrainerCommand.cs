@@ -10,5 +10,6 @@ public record UpdateTrainerCommand(
     Guid Id,
     string Name,
     string? Bio,
+    string? TrainingType = null,
     GymType? GymType = null
 ) : IRequest<Result<TrainerDto>>;

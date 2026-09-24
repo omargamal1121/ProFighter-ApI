@@ -44,10 +44,11 @@ public class AdminTrainersController : BaseController
         CancellationToken ct)
     {
         var command = new CreateTrainerCommand(
-            request.Name,
-            request.Bio,
-            request.GymType,
-            request.Image);
+            Name: request.Name,
+            Bio: request.Bio,
+            TrainingType: request.TrainingType,
+            GymType: request.GymType,
+            Image: request.Image);
 
         var result = await _mediator.Send(command, ct);
         return HandleResult(result);
@@ -89,7 +90,7 @@ public class AdminTrainersController : BaseController
         [FromBody] UpdateTrainerRequest request,
         CancellationToken ct)
     {
-        var command = new UpdateTrainerCommand(id, request.Name, request.Bio, request.GymType);
+        var command = new UpdateTrainerCommand(id, request.Name, request.Bio, request.TrainingType, request.GymType);
         var result = await _mediator.Send(command, ct);
         return HandleResult(result);
     }
@@ -172,6 +173,7 @@ public class CreateTrainerRequest
 {
     public string Name { get; set; } = null!;
     public string? Bio { get; set; }
+    public string? TrainingType { get; set; }
     public GymType GymType { get; set; } = GymType.ProFighter;
     public IFormFile? Image { get; set; }
 }
@@ -186,5 +188,6 @@ public class UploadTrainerImageRequest
 public record UpdateTrainerRequest(
     string Name,
     string? Bio,
+    string? TrainingType,
     GymType? GymType
 );

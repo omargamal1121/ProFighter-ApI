@@ -7,8 +7,8 @@ public record TrainerMediaDto(
     Guid Id,
     string CloudinaryUrl,
     string CloudinaryPublicId,
-    MediaType Type,
-    MediaPurpose Purpose,
+    string Type,
+    string Purpose,
     int DisplayOrder,
     DateTime CreatedAt
 )
@@ -19,8 +19,8 @@ public record TrainerMediaDto(
             media.Id,
             media.CloudinaryUrl,
             media.CloudinaryPublicId,
-            media.Type,
-            media.Purpose,
+            media.Type.ToString(),
+            media.Purpose.ToString(),
             media.DisplayOrder,
             media.CreatedAt
         );

@@ -9,6 +9,7 @@ namespace ProFighter.Application.Trainers.Commands.CreateTrainer;
 public record CreateTrainerCommand(
     string Name,
     string? Bio,
+    string? TrainingType = null,
     GymType GymType = GymType.ProFighter,
     IFormFile? Image = null
 ) : IRequest<Result<TrainerDto>>;

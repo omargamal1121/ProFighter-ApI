@@ -25,5 +25,9 @@ public class TrainerConfiguration : IEntityTypeConfiguration<Trainer>
         builder.Property(t => t.GymType)
             .HasDefaultValue(Domain.Enums.GymType.ProFighter)
             .IsRequired();
+
+        builder.Property(t => t.TrainingType)
+            .HasMaxLength(100)
+            .IsRequired(false);
     }
 }
