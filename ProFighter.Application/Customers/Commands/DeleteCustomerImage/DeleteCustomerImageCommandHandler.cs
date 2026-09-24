@@ -9,16 +9,13 @@ namespace ProFighter.Application.Customers.Commands.DeleteCustomerImage;
 public class DeleteCustomerImageCommandHandler : IRequestHandler<DeleteCustomerImageCommand, Result<bool>>
 {
     private readonly IApplicationDbContext _context;
-    private readonly IImageService _imageService;
     private readonly ILogger<DeleteCustomerImageCommandHandler> _logger;
 
     public DeleteCustomerImageCommandHandler(
         IApplicationDbContext context,
-        IImageService imageService,
         ILogger<DeleteCustomerImageCommandHandler> logger)
     {
         _context = context;
-        _imageService = imageService;
         _logger = logger;
     }
 
@@ -30,15 +27,11 @@ public class DeleteCustomerImageCommandHandler : IRequestHandler<DeleteCustomerI
         if (media == null)
             return Result<bool>.Failure($"Image with ID '{request.ImageId}' was not found for this customer.", 404);
 
-        if (!string.IsNullOrEmpty(media.CloudinaryPublicId))
-        {
-            await _imageService.DeleteImageAsync(media.CloudinaryPublicId, cancellationToken);
-        }
-
-        _context.Medias.Remove(media);
+        // Soft-delete the media entry (keeps DB FK intact to satisfy CK_Media_SingleOwner)
+        media.MarkAsDeleted();
         await _context.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Deleted image {ImageId} for Customer {CustomerId}", request.ImageId, request.CustomerId);
+        _logger.LogInformation("Soft-deleted image {ImageId} for Customer {CustomerId}", request.ImageId, request.CustomerId);
         return Result<bool>.Success(true, "Customer image deleted successfully.");
     }
 }

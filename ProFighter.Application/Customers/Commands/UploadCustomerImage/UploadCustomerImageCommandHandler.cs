@@ -36,9 +36,20 @@ public class UploadCustomerImageCommandHandler : IRequestHandler<UploadCustomerI
         if (request.Image == null || request.Image.Length == 0)
             return Result<CustomerMediaDto>.Failure("An image file is required.", 400);
 
+        // Fetch existing media for this customer to soft-delete upon replacement
+        var existingMedia = await _context.Medias
+            .Where(m => m.CustomerId == customer.Id)
+            .ToListAsync(cancellationToken);
+
         var uploadResult = await _imageService.UploadImageAsync(request.Image, "customers", cancellationToken);
         if (!uploadResult.IsSuccess || uploadResult.Data == null)
             return Result<CustomerMediaDto>.Failure(uploadResult.Message ?? "Failed to upload image.", uploadResult.Status);
+
+        // Soft-delete old profile image(s)
+        foreach (var oldMedia in existingMedia)
+        {
+            oldMedia.MarkAsDeleted();
+        }
 
         var media = Media.ForCustomer(
             customerId: customer.Id,
@@ -52,7 +63,7 @@ public class UploadCustomerImageCommandHandler : IRequestHandler<UploadCustomerI
         _context.Medias.Add(media);
         await _context.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Uploaded image {MediaId} for Customer {CustomerId}", media.Id, customer.Id);
+        _logger.LogInformation("Uploaded image {MediaId} for Customer {CustomerId} (soft-deleted existing media)", media.Id, customer.Id);
         return Result<CustomerMediaDto>.Success(CustomerMediaDto.FromEntity(media), "Image uploaded successfully.", 201);
     }
 }

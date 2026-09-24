@@ -9,16 +9,13 @@ namespace ProFighter.Application.Trainers.Commands.DeleteTrainer;
 public class DeleteTrainerCommandHandler : IRequestHandler<DeleteTrainerCommand, Result<bool>>
 {
     private readonly IApplicationDbContext _context;
-    private readonly IImageService _imageService;
     private readonly ILogger<DeleteTrainerCommandHandler> _logger;
 
     public DeleteTrainerCommandHandler(
         IApplicationDbContext context,
-        IImageService imageService,
         ILogger<DeleteTrainerCommandHandler> logger)
     {
         _context = context;
-        _imageService = imageService;
         _logger = logger;
     }
 
@@ -35,17 +32,13 @@ public class DeleteTrainerCommandHandler : IRequestHandler<DeleteTrainerCommand,
 
         foreach (var media in trainer.Medias)
         {
-            if (!string.IsNullOrEmpty(media.CloudinaryPublicId))
-            {
-                await _imageService.DeleteImageAsync(media.CloudinaryPublicId, cancellationToken);
-            }
-            _context.Medias.Remove(media);
+            media.MarkAsDeleted();
         }
 
-        _context.Trainers.Remove(trainer);
+        trainer.MarkAsDeleted();
         await _context.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Deleted Trainer {TrainerId} and all associated images.", request.Id);
+        _logger.LogInformation("Soft-deleted Trainer {TrainerId} and all associated images.", request.Id);
 
         return Result<bool>.Success(true, "Trainer and associated images deleted successfully.");
     }
