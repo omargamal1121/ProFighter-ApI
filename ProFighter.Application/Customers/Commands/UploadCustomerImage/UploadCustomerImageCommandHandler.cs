@@ -1,6 +1,3 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -43,12 +40,11 @@ public class UploadCustomerImageCommandHandler : IRequestHandler<UploadCustomerI
         if (!uploadResult.IsSuccess || uploadResult.Data == null)
             return Result<CustomerMediaDto>.Failure(uploadResult.Message ?? "Failed to upload image.", uploadResult.Status);
 
-        var media = new Media(
+        var media = Media.ForCustomer(
+            customerId: customer.Id,
             cloudinaryUrl: uploadResult.Data.Url,
             cloudinaryPublicId: uploadResult.Data.PublicId,
             type: MediaType.Image,
-            ownerType: MediaOwnerType.Customer,
-            ownerId: customer.Id,
             purpose: request.Purpose,
             displayOrder: request.DisplayOrder
         );

@@ -38,12 +38,11 @@ public class UploadTrainerImageCommandHandler : IRequestHandler<UploadTrainerIma
         if (!uploadResult.IsSuccess || uploadResult.Data == null)
             return Result<TrainerMediaDto>.Failure(uploadResult.Message ?? "Failed to upload image.", uploadResult.Status);
 
-        var media = new Media(
+        var media = Media.ForTrainer(
+            trainerId: trainer.Id,
             cloudinaryUrl: uploadResult.Data.Url,
             cloudinaryPublicId: uploadResult.Data.PublicId,
             type: MediaType.Image,
-            ownerType: MediaOwnerType.Trainer,
-            ownerId: trainer.Id,
             purpose: request.Purpose,
             displayOrder: request.DisplayOrder
         );

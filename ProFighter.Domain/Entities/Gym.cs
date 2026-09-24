@@ -4,14 +4,15 @@ namespace ProFighter.Domain.Entities;
 
 public class Gym : BaseEntity
 {
-    private readonly List<Media> _medias = new();
+    private readonly List<Media> _media = new();
 
     public string Name { get; private set; }
     public string? Description { get; private set; }
     public string? Address { get; private set; }
     public string? PhoneNumber { get; private set; }
     public string? Email { get; private set; }
-    public IReadOnlyCollection<Media> Medias => _medias.AsReadOnly();
+
+    public IReadOnlyCollection<Media> Media => _media.AsReadOnly();
 
     // EF Core Constructor
     private Gym() : base()

@@ -34,8 +34,7 @@ public sealed class GetMyProfileQueryHandler
             {
                 Customer = c,
                 ImageUrl = _context.Medias
-                    .Where(m => m.OwnerId == c.Id
-                             && m.OwnerType == MediaOwnerType.Customer
+                    .Where(m => m.CustomerId == c.Id
                              && m.Purpose == MediaPurpose.ProfileImage)
                     .OrderByDescending(m => m.CreatedAt)
                     .Select(m => m.CloudinaryUrl)

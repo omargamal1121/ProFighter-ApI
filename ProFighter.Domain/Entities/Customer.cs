@@ -5,6 +5,8 @@ namespace ProFighter.Domain.Entities;
 
 public class Customer : BaseEntity
 {
+    private readonly List<Media> _media = new();
+
     public string Name { get; private set; }
     public string MobileNumber { get; private set; }
     public string? Email { get; private set; }
@@ -13,6 +15,8 @@ public class Customer : BaseEntity
     public int LoyaltyPointsBalance { get; private set; }
     public bool IsFirstLogin { get; private set; } = true;
     public GymType GymType { get; private set; } = GymType.ProFighter;
+
+    public IReadOnlyCollection<Media> Media => _media.AsReadOnly();
 
 
 

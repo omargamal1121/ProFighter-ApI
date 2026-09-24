@@ -1,12 +1,8 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ProFighter.Application.Common;
 using ProFighter.Application.Common.Interfaces;
-using ProFighter.Domain.Enums;
 
 namespace ProFighter.Application.Customers.Commands.DeleteCustomerImage;
 
@@ -29,7 +25,7 @@ public class DeleteCustomerImageCommandHandler : IRequestHandler<DeleteCustomerI
     public async Task<Result<bool>> Handle(DeleteCustomerImageCommand request, CancellationToken cancellationToken)
     {
         var media = await _context.Medias
-            .FirstOrDefaultAsync(m => m.Id == request.ImageId && m.OwnerId == request.CustomerId && m.OwnerType == MediaOwnerType.Customer, cancellationToken);
+            .FirstOrDefaultAsync(m => m.Id == request.ImageId && m.CustomerId == request.CustomerId, cancellationToken);
 
         if (media == null)
             return Result<bool>.Failure($"Image with ID '{request.ImageId}' was not found for this customer.", 404);

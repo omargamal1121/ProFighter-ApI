@@ -19,12 +19,11 @@ public class Trainer : BaseEntity
         Name = null!;
     }
 
-    public Trainer( string name, string? bio = null, bool isActive = true, GymType gymType = GymType.ProFighter) : base()
+    public Trainer(string name, string? bio = null, bool isActive = true, GymType gymType = GymType.ProFighter) : base()
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Trainer name cannot be empty.", nameof(name));
 
-     
         Name = name;
         Bio = bio;
         IsActive = isActive;
