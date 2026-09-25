@@ -52,6 +52,13 @@ public sealed class CompleteFirstLoginCommandHandler : IRequestHandler<CompleteF
             .FirstOrDefaultAsync(c => c.MobileNumber == mobileNumber, cancellationToken)
             ?? throw new InvalidOperationException($"No customer found for mobile number associated with this token.");
 
+     
+        if (string.IsNullOrWhiteSpace(request.Email))
+            throw new InvalidOperationException("Email address is required to complete first login setup.");
+
+        if (!System.Net.Mail.MailAddress.TryCreate(request.Email, out var mailAddr) || mailAddr.Address != request.Email.Trim())
+            throw new InvalidOperationException("A valid email address is required.");
+
         var normalizedEmail = request.Email?.Trim().ToLowerInvariant();
         if (!string.IsNullOrEmpty(normalizedEmail))
         {
@@ -66,10 +73,10 @@ public sealed class CompleteFirstLoginCommandHandler : IRequestHandler<CompleteF
 
         await _authenticationService.SetPasswordAndEmailAsync(customer.Id, request.NewPassword, request.Email, cancellationToken);
 
-        // Consume first-login token only AFTER password setting succeeds
+        
         _firstLoginTokenService.InvalidateToken(request.Token);
 
-        // Update Customer entity with email and mark first login as completed
+      
         try
         {
             customer.UpdateProfile(customer.Name, customer.MobileNumber, normalizedEmail);
@@ -90,7 +97,7 @@ public sealed class CompleteFirstLoginCommandHandler : IRequestHandler<CompleteF
         // Best-effort email confirmation send - must not block or fail the login-completion flow
         try
         {
-            await _emailConfirmationService.SendConfirmationOtpAsync(customer.Id, cancellationToken);
+            await _emailConfirmationService.SendConfirmationOtpAsync(customer.Id, customer.GymType, cancellationToken);
         }
         catch (Exception ex)
         {

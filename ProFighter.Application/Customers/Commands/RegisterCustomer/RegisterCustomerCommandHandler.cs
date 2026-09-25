@@ -132,7 +132,7 @@ public class RegisterCustomerCommandHandler : IRequestHandler<RegisterCustomerCo
         {
             try
             {
-                await _emailConfirmationService.SendConfirmationOtpAsync(customerId, ct);
+                await _emailConfirmationService.SendConfirmationOtpAsync(customerId, currentGym, ct);
                 emailSent = true;
             }
             catch (Exception ex)

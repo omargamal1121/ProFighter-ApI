@@ -158,7 +158,18 @@ public sealed class AuthController : BaseController
         CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(command, cancellationToken);
-        return Ok(ApiResponse<ForgotPasswordResult>.CreateSuccessResponse("Password reset request processed.", result, 200));
+        
+        if (result.Outcome == ForgotPasswordOutcome.ResetOtpSent)
+        {
+            return Ok(ApiResponse<ForgotPasswordResult>.CreateSuccessResponse("Password reset request processed.", result, 200));
+        }
+        else
+        {
+            return BadRequest(ApiResponse<ForgotPasswordResult>.CreateErrorResponse(
+                "Password reset request failed",
+                new ErrorResponse("Password Reset Failed", result.Message),
+                400));
+        }
     }
 
     /// <summary>

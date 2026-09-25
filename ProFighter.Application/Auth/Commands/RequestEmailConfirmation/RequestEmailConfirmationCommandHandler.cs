@@ -48,7 +48,7 @@ public sealed class RequestEmailConfirmationCommandHandler : IRequestHandler<Req
 
         try
         {
-            await _emailConfirmationService.SendConfirmationOtpAsync(customer.Id, cancellationToken);
+            await _emailConfirmationService.SendConfirmationOtpAsync(customer.Id, customer.GymType, cancellationToken);
             _logger.LogInformation("Email confirmation OTP sent successfully to customer {CustomerId}", customer.Id);
             return new RequestEmailConfirmationResult(true, "Email confirmation OTP sent successfully. Please check your email.");
         }

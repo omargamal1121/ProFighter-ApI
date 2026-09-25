@@ -36,18 +36,16 @@ public sealed class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswor
             .ForCurrentGym(_gymContext)
             .FirstOrDefaultAsync(c => c.MobileNumber == request.MobileNumber, ct);
 
-        // Deliberately do NOT throw/reveal "customer not found" — return the same
-        // NoEmailOnFile-shaped response to avoid leaking which mobile numbers are registered
-        // (standard forgot-password enumeration-prevention practice). Log internally for visibility.
+     
         if (customer is null)
         {
             _logger.LogInformation("Forgot-password requested for unregistered mobile number.");
-            return new ForgotPasswordResult(ForgotPasswordOutcome.NoEmailOnFile);
+            return new ForgotPasswordResult(ForgotPasswordOutcome.AccountNotFound, "Account not found with this mobile number.");
         }
 
         if (string.IsNullOrWhiteSpace(customer.Email))
         {
-            return new ForgotPasswordResult(ForgotPasswordOutcome.NoEmailOnFile);
+            return new ForgotPasswordResult(ForgotPasswordOutcome.NoEmailOnFile, "No email address found on file for this account.");
         }
 
         var isConfirmed = await _authenticationService.IsEmailConfirmedAsync(customer.Id, ct);
@@ -55,24 +53,23 @@ public sealed class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswor
         if (!isConfirmed)
         {
             _logger.LogInformation("Password reset requested for customer {CustomerId} with unconfirmed email", customer.Id);
-            return new ForgotPasswordResult(ForgotPasswordOutcome.EmailNotConfirmed);
+            return new ForgotPasswordResult(ForgotPasswordOutcome.EmailNotConfirmed, "Email address is not confirmed. Please confirm your email first.");
         }
 
         try
         {
-            var otpResult = await _passwordResetService.SendPasswordResetOtpAsync(customer.Id, ct);
+            var otpResult = await _passwordResetService.SendPasswordResetOtpAsync(customer.Id, customer.GymType, ct);
             if (otpResult == Common.Enums.PasswordResetOtpResult.EmailConfirmationRequired)
             {
-                return new ForgotPasswordResult(ForgotPasswordOutcome.EmailNotConfirmed);
+                return new ForgotPasswordResult(ForgotPasswordOutcome.EmailNotConfirmed,"Confirm your email first check your dm");
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send password reset OTP for customer {CustomerId}.", customer.Id);
-            // Still report success-shaped outcome to the caller for the same enumeration-prevention
-            // reason as above — the failure is logged internally for ops follow-up.
+           
         }
 
-        return new ForgotPasswordResult(ForgotPasswordOutcome.ResetOtpSent);
+        return new ForgotPasswordResult(ForgotPasswordOutcome.ResetOtpSent, "Password reset OTP sent successfully to your email.");
     }
 }

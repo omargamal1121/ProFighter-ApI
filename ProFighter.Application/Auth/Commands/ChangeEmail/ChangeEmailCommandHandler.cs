@@ -49,7 +49,7 @@ public class ChangeEmailCommandHandler : IRequestHandler<ChangeEmailCommand, Cha
 
         _logger.LogInformation("Email updated and marked unconfirmed for customer {CustomerId}", request.UserId);
 
-        await _emailConfirmationService.SendConfirmationOtpAsync(request.UserId, ct);
+        await _emailConfirmationService.SendConfirmationOtpAsync(request.UserId, customer.GymType, ct);
 
         return new ChangeEmailResult(true, "Email changed successfully. Confirmation OTP sent to new email address.");
     }

@@ -38,37 +38,53 @@ public class AccountEmailService : IAccountEmailService
     private string WebsiteUrl => _configuration["Company:WebsiteUrl"] ?? "https://profighterclub.com";
     private string SupportPhone => _configuration["Company:SupportPhone"] ?? "";
 
-    public async Task SendValidationEmailAsync(string email, string userId, string otp)
+    private string BaseDomain
+    {
+        get
+        {
+            var rawDomain = _configuration["App:FrontendUrl"] ?? _configuration["App:Domain"] ?? _configuration["App:BaseUrl"] ?? _configuration["Company:WebsiteUrl"] ?? "localhost:5000";
+            rawDomain = rawDomain.Trim();
+            if (rawDomain.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || rawDomain.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                return rawDomain.TrimEnd('/');
+            }
+            return "https://" + rawDomain.TrimEnd('/');
+        }
+    }
+
+    public async Task SendValidationEmailAsync(string email, string userId, string otp, string? mobileNumber = null, ProFighter.Domain.Enums.GymType? gymType = null)
     {
         try
         {
-            string subject = $"رمز تأكيد البريد الإلكتروني - {CompanyNameAr}";
+            string subject = $"تأكيد البريد الإلكتروني - {CompanyNameAr}";
+            string encodedMobile = Uri.EscapeDataString(mobileNumber ?? "");
+            string gymTypeParam = gymType.HasValue ? $"&gymType={(int)gymType.Value}" : "";
+            string confirmUrl = $"{BaseDomain}/confirm-email?mobileNumber={encodedMobile}&otp={otp}{gymTypeParam}";
 
             string message = CreateEmailTemplate(
-                "رمز تأكيد البريد الإلكتروني",
-                "Email Confirmation OTP",
+                "تأكيد البريد الإلكتروني",
+                "Email Confirmation",
                 BrandPrimaryDark,
                 $@"
             <h1 style='color:{TextDark}; margin:0 0 16px; font-size:22px;'>أهلاً بك في {CompanyNameAr} 👋</h1>
             <p style='font-size:15px; line-height:1.8; color:{TextDark};'>
-                شكرًا لتسجيلك معنا. لإتمام إنشاء حسابك، برجاء تأكيد بريدك الإلكتروني باستخدام الرمز التالي.
+                شكرًا لتسجيلك معنا. لإتمام إنشاء حسابك، برجاء تأكيد بريدك الإلكتروني بالضغط على الزر أدناه.
             </p>
-            <div style='background-color:#f0f4f8; padding:24px; border-radius:12px; margin:20px 0; text-align:center; border:2px solid {BrandPrimaryLight};'>
-                <h2 style='color:{BrandPrimaryDark}; margin:0 0 8px; font-size:32px; letter-spacing:8px; font-weight:bold;'>{otp}</h2>
-                <p style='color:{TextMuted}; margin:0; font-size:14px;'>رمز التحقق لمرة واحدة (OTP)</p>
+            <div style='padding:20px; text-align:center; margin:20px 0;'>
+                <a href='{confirmUrl}' target='_blank' style='display:inline-block; background-color:{BrandPrimaryLight}; color:#ffffff; font-weight:bold; text-decoration:none; padding:14px 32px; border-radius:10px; font-size:16px; box-shadow:0 4px 12px rgba(229,57,53,0.3);'>تأكيد البريد الإلكتروني</a>
             </div>
-            {NoticeBlock("ملحوظة هامة", "هذا الرمز صالح لمدة 15 دقيقة فقط لدواعي الأمان.")}
+            {NoticeBlock("ملحوظة هامة", "هذا الرابط صالح لمدة 15 دقيقة فقط لدواعي الأمان.")}
             <p style='font-size:13px; color:{TextMuted};'>
                 إذا لم تقم بإنشاء هذا الحساب، برجاء تجاهل هذه الرسالة.
             </p>"
             );
 
             await _emailSender.SendEmailAsync(email, subject, message);
-            _logger.LogInformation($"Email confirmation OTP sent successfully to {email}");
+            _logger.LogInformation($"Email confirmation link sent successfully to {email}");
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Failed to send email confirmation OTP to {email}: {ex.Message}");
+            _logger.LogError($"Failed to send email confirmation link to {email}: {ex.Message}");
             throw;
         }
     }
@@ -94,39 +110,41 @@ public class AccountEmailService : IAccountEmailService
         await _emailSender.SendEmailAsync(email, subject, message);
     }
 
-    public async Task SendPasswordResetEmailAsync(string email, string username, string otp)
+    public async Task SendPasswordResetEmailAsync(string email, string username, string otp, string? mobileNumber = null, ProFighter.Domain.Enums.GymType? gymType = null)
     {
         try
         {
-            string subject = $"رمز إعادة تعيين كلمة المرور - {CompanyNameAr}";
+            string subject = $"إعادة تعيين كلمة المرور - {CompanyNameAr}";
+            string encodedMobile = Uri.EscapeDataString(mobileNumber ?? "");
+            string gymTypeParam = gymType.HasValue ? $"&gymType={(int)gymType.Value}" : "";
+            string resetUrl = $"{BaseDomain}/reset-password?mobileNumber={encodedMobile}&otp={otp}{gymTypeParam}";
 
             string message = CreateEmailTemplate(
-                "رمز إعادة تعيين كلمة المرور",
-                "Password Reset OTP",
+                "إعادة تعيين كلمة المرور",
+                "Password Reset",
                 BrandPrimaryDark,
                 $@"
-            <h1 style='color:{TextDark}; margin:0 0 16px; font-size:22px;'>رمز إعادة تعيين كلمة المرور</h1>
+            <h1 style='color:{TextDark}; margin:0 0 16px; font-size:22px;'>إعادة تعيين كلمة المرور</h1>
             <p style='font-size:15px; line-height:1.8; color:{TextDark};'>
                 مرحبًا <strong>{username}</strong>،<br>
-                وصلنا طلب لإعادة تعيين كلمة المرور الخاصة بحسابك. إذا كنت أنت من طلب ذلك، استخدم الرمز التالي لتعيين كلمة مرور جديدة.
+                وصلنا طلب لإعادة تعيين كلمة المرور الخاصة بحسابك. إذا كنت أنت من طلب ذلك، برجاء الضغط على الزر أدناه لإعادة تعيين كلمة المرور الخاصة بك.
             </p>
-            <div style='background-color:#f0f4f8; padding:24px; border-radius:12px; margin:20px 0; text-align:center; border:2px solid {BrandPrimaryLight};'>
-                <h2 style='color:{BrandPrimaryDark}; margin:0 0 8px; font-size:32px; letter-spacing:8px; font-weight:bold;'>{otp}</h2>
-                <p style='color:{TextMuted}; margin:0; font-size:14px;'>رمز التحقق لمرة واحدة (OTP)</p>
+            <div style='padding:20px; text-align:center; margin:20px 0;'>
+                <a href='{resetUrl}' target='_blank' style='display:inline-block; background-color:{BrandPrimaryLight}; color:#ffffff; font-weight:bold; text-decoration:none; padding:14px 32px; border-radius:10px; font-size:16px; box-shadow:0 4px 12px rgba(229,57,53,0.3);'>إعادة تعيين كلمة المرور</a>
             </div>
-            {NoticeBlock("تنبيه أمني", "هذا الرمز صالح لمدة 15 دقيقة فقط. إذا لم تطلب ذلك، تجاهل هذه الرسالة.", isWarning: true)}
+            {NoticeBlock("تنبيه أمني", "هذا الرابط صالح لمدة 15 دقيقة فقط. إذا لم تطلب ذلك، تجاهل هذه الرسالة.", isWarning: true)}
             <p style='font-size:13px; color:{TextMuted};'>
                 لأمانك، إذا لم تطلب إعادة تعيين كلمة المرور، برجاء التواصل مع فريق الدعم فورًا.
             </p>"
             );
 
             await _emailSender.SendEmailAsync(email, subject, message);
-            _logger.LogInformation($"Password reset OTP email sent successfully to {email}");
+            _logger.LogInformation($"Password reset email link sent successfully to {email}");
         }
         catch (Exception ex)
         {
             var formattedError = ProFighter.Infrastructure.Logging.ExceptionLogFormatter.ToOneLine(ex);
-            _logger.LogError("Failed to send password reset OTP email to {Email}: {Error}", email, formattedError);
+            _logger.LogError("Failed to send password reset email link to {Email}: {Error}", email, formattedError);
             throw;
         }
     }

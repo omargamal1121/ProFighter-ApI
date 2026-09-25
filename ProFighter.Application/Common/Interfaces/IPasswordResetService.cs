@@ -6,5 +6,5 @@ namespace ProFighter.Application.Common.Interfaces;
 
 public interface IPasswordResetService
 {
-    Task<PasswordResetOtpResult> SendPasswordResetOtpAsync(Guid userId, CancellationToken ct = default);
+    Task<PasswordResetOtpResult> SendPasswordResetOtpAsync(Guid userId, ProFighter.Domain.Enums.GymType? gymType = null, CancellationToken ct = default);
 }

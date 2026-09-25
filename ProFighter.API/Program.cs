@@ -5,6 +5,7 @@ using ProFighter.Application;
 using ProFighter.API.Middleware;
 using Serilog;
 using Microsoft.AspNetCore.DataProtection;
+using System.Text.Json.Serialization;
 
 namespace ProFighter.API
 {
@@ -28,7 +29,11 @@ namespace ProFighter.API
 
 			// Add services to the container.
 
-			builder.Services.AddControllers();
+			builder.Services.AddControllers()
+				.AddJsonOptions(options =>
+				{
+					options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+				});
 			builder.Services.AddEndpointsApiExplorer();
 			builder.Services.AddSwaggerGen();
 

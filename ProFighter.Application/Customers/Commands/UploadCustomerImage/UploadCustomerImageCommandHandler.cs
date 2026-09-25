@@ -45,12 +45,6 @@ public class UploadCustomerImageCommandHandler : IRequestHandler<UploadCustomerI
         if (!uploadResult.IsSuccess || uploadResult.Data == null)
             return Result<CustomerMediaDto>.Failure(uploadResult.Message ?? "Failed to upload image.", uploadResult.Status);
 
-        // Soft-delete old profile image(s)
-        foreach (var oldMedia in existingMedia)
-        {
-            oldMedia.MarkAsDeleted();
-        }
-
         var media = Media.ForCustomer(
             customerId: customer.Id,
             cloudinaryUrl: uploadResult.Data.Url,

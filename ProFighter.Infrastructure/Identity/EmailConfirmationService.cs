@@ -11,6 +11,7 @@ public class EmailConfirmationService : IEmailConfirmationService
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IAccountEmailService _accountEmailService;
+    private readonly IApplicationDbContext _context;
     private readonly IConfiguration _configuration;
     private readonly ILogger<EmailConfirmationService> _logger;
     private readonly IEmailConfirmationOtpService _otpService;
@@ -18,18 +19,20 @@ public class EmailConfirmationService : IEmailConfirmationService
     public EmailConfirmationService(
         UserManager<ApplicationUser> userManager,
         IAccountEmailService accountEmailService,
+        IApplicationDbContext context,
         IConfiguration configuration,
         ILogger<EmailConfirmationService> logger,
         IEmailConfirmationOtpService otpService)
     {
         _userManager = userManager;
         _accountEmailService = accountEmailService;
+        _context = context;
         _configuration = configuration;
         _logger = logger;
         _otpService = otpService;
     }
 
-    public async Task SendConfirmationOtpAsync(Guid customerId, CancellationToken ct = default)
+    public async Task SendConfirmationOtpAsync(Guid customerId, ProFighter.Domain.Enums.GymType? gymType = null, CancellationToken ct = default)
     {
         var user = await _userManager.FindByIdAsync(customerId.ToString());
         if (user == null)
@@ -52,7 +55,8 @@ public class EmailConfirmationService : IEmailConfirmationService
         _otpService.StoreOtp(customerId.ToString(), otp, TimeSpan.FromMinutes(expiryMinutes));
 
         // Send OTP via email
-        await _accountEmailService.SendValidationEmailAsync(user.Email, user.Id.ToString(), otp);
+        var mobileNumber = !string.IsNullOrWhiteSpace(user.PhoneNumber) ? user.PhoneNumber : user.UserName;
+        await _accountEmailService.SendValidationEmailAsync(user.Email, user.Id.ToString(), otp, mobileNumber, gymType);
         _logger.LogInformation("Email confirmation OTP sent successfully to customer {CustomerId}", customerId);
     }
 

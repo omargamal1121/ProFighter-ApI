@@ -15,7 +15,7 @@ public class CompleteFirstLoginCommandValidator : AbstractValidator<CompleteFirs
 
         RuleFor(v => v.Email)
             .NotEmpty().WithMessage("Email is required.")
-            .EmailAddress().WithMessage("A valid email address is required.")
+            .EmailAddress(FluentValidation.Validators.EmailValidationMode.AspNetCoreCompatible).WithMessage("A valid email address is required.")
             .MaximumLength(150).WithMessage("Email must not exceed 150 characters.");
     }
 }
