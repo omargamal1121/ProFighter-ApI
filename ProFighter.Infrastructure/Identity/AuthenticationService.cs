@@ -175,6 +175,21 @@ public class AuthenticationService : IAuthenticationService
         return await _userManager.IsEmailConfirmedAsync(user);
     }
 
+    public async Task<UserEmailStateResult> GetUserEmailStateAsync(Guid userId, CancellationToken ct = default)
+    {
+        var user = await _userManager.Users
+            .Where(u => u.Id == userId)
+            .Select(u => new { u.Email, u.EmailConfirmed })
+            .FirstOrDefaultAsync(ct);
+
+        if (user == null)
+        {
+            throw new InvalidOperationException($"User with ID {userId} not found.");
+        }
+
+        return new UserEmailStateResult(user.Email, user.EmailConfirmed);
+    }
+
     public async Task ResetPasswordAsync(Guid userId, string newPassword, CancellationToken ct = default)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());

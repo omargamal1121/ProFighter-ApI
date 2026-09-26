@@ -13,6 +13,7 @@ public sealed class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswor
     private readonly IApplicationDbContext _context;
     private readonly IAuthenticationService _authenticationService;
     private readonly IPasswordResetService _passwordResetService;
+    private readonly IEmailConfirmationService _emailConfirmationService;
     private readonly ICurrentGymContext _gymContext;
     private readonly ILogger<ForgotPasswordCommandHandler> _logger;
 
@@ -20,12 +21,14 @@ public sealed class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswor
         IApplicationDbContext context,
         IAuthenticationService authenticationService,
         IPasswordResetService passwordResetService,
+        IEmailConfirmationService emailConfirmationService,
         ICurrentGymContext gymContext,
         ILogger<ForgotPasswordCommandHandler> logger)
     {
         _context = context;
         _authenticationService = authenticationService;
         _passwordResetService = passwordResetService;
+        _emailConfirmationService = emailConfirmationService;
         _gymContext = gymContext;
         _logger = logger;
     }
@@ -36,24 +39,33 @@ public sealed class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswor
             .ForCurrentGym(_gymContext)
             .FirstOrDefaultAsync(c => c.MobileNumber == request.MobileNumber, ct);
 
-     
         if (customer is null)
         {
             _logger.LogInformation("Forgot-password requested for unregistered mobile number.");
             return new ForgotPasswordResult(ForgotPasswordOutcome.AccountNotFound, "Account not found with this mobile number.");
         }
 
-        if (string.IsNullOrWhiteSpace(customer.Email))
+        var emailState = await _authenticationService.GetUserEmailStateAsync(customer.Id, ct);
+
+        if (string.IsNullOrWhiteSpace(emailState.Email))
         {
-            return new ForgotPasswordResult(ForgotPasswordOutcome.NoEmailOnFile, "No email address found on file for this account.");
+            _logger.LogInformation("Password reset requested for customer {CustomerId} with no email on file", customer.Id);
+            return new ForgotPasswordResult(ForgotPasswordOutcome.NoEmailOnFile, "Please log in using your default password to complete your account setup and register your email address.");
         }
 
-        var isConfirmed = await _authenticationService.IsEmailConfirmedAsync(customer.Id, ct);
-
-        if (!isConfirmed)
+        if (!emailState.IsConfirmed)
         {
             _logger.LogInformation("Password reset requested for customer {CustomerId} with unconfirmed email", customer.Id);
-            return new ForgotPasswordResult(ForgotPasswordOutcome.EmailNotConfirmed, "Email address is not confirmed. Please confirm your email first.");
+            try
+            {
+                await _emailConfirmationService.SendConfirmationOtpAsync(customer.Id, customer.GymType, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to resend email confirmation OTP for customer {CustomerId}.", customer.Id);
+            }
+
+            return new ForgotPasswordResult(ForgotPasswordOutcome.EmailNotConfirmed, "Email address is not confirmed. We have resent a confirmation code to your email. Please check your inbox to confirm your email first.");
         }
 
         try
@@ -61,13 +73,12 @@ public sealed class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswor
             var otpResult = await _passwordResetService.SendPasswordResetOtpAsync(customer.Id, customer.GymType, ct);
             if (otpResult == Common.Enums.PasswordResetOtpResult.EmailConfirmationRequired)
             {
-                return new ForgotPasswordResult(ForgotPasswordOutcome.EmailNotConfirmed,"Confirm your email first check your dm");
+                return new ForgotPasswordResult(ForgotPasswordOutcome.EmailNotConfirmed, "Email address is not confirmed. Please check your inbox to confirm your email first.");
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send password reset OTP for customer {CustomerId}.", customer.Id);
-           
         }
 
         return new ForgotPasswordResult(ForgotPasswordOutcome.ResetOtpSent, "Password reset OTP sent successfully to your email.");
